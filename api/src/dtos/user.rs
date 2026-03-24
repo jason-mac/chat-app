@@ -24,3 +24,9 @@ pub struct UserResponse {
     pub email: String,
     pub created_at: DateTime<Utc>,
 }
+
+#[derive(Serialize)]
+pub struct UserProfile {
+    pub user_id: Uuid,
+    pub username: String,
+}

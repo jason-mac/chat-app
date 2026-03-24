@@ -3,7 +3,9 @@ use crate::auth::middleware::auth_middleware;
 use crate::handlers::auth::{login, register};
 use crate::handlers::me::{delete_me, get_me, update_me};
 use crate::handlers::message::{get_message_by_id, get_messages};
-use crate::handlers::user::{delete_user, get_user_by_id, get_users, update_user};
+use crate::handlers::user::{
+    delete_user, get_user_by_id, get_user_profile, get_users, update_user,
+};
 use crate::handlers::ws::ws_handler;
 use axum::middleware;
 use axum::routing::{Router, delete, get, patch, post};
@@ -37,13 +39,16 @@ pub fn create_router() -> Router<Application> {
     Router::new()
         .nest(
             "/api",
-            Router::new().merge(auth_routes).merge(
-                Router::new()
-                    .merge(user_routes)
-                    .merge(message_routes)
-                    .merge(me_routes)
-                    .route_layer(middleware::from_fn(auth_middleware)),
-            ),
+            Router::new()
+                .merge(auth_routes)
+                .route("/users/{id}/profile", get(get_user_profile))
+                .merge(
+                    Router::new()
+                        .merge(user_routes)
+                        .merge(message_routes)
+                        .merge(me_routes)
+                        .route_layer(middleware::from_fn(auth_middleware)),
+                ),
         )
         .merge(web_socket_routes)
         .fallback(not_found)

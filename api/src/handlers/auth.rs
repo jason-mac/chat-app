@@ -50,5 +50,7 @@ pub async fn login(
     Ok(Json(LoginResponse {
         token,
         expires_in: 86400,
+        username: user.username,
+        user_id: user.user_id.to_string(),
     }))
 }

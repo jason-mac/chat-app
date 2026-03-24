@@ -1,9 +1,11 @@
 use crate::application::Application;
 use crate::{
-    dtos::user::{CreateUser, UpdateUser, UserResponse},
+    dtos::user::{CreateUser, UpdateUser, UserProfile, UserResponse},
     mappers::user::to_user_response,
     models::user::User,
 };
+
+use uuid::Uuid;
 
 use axum::{
     Json, Router,
@@ -31,6 +33,25 @@ pub async fn get_users(
         .unwrap();
     let response: Vec<UserResponse> = users.into_iter().map(|u| to_user_response(u)).collect();
     Json(json!(response))
+}
+
+pub async fn get_user_profile(
+    State(app): State<Application>,
+    Path(user_id): Path<Uuid>,
+) -> Json<Value> {
+    let user = sqlx::query_as::<_, User>("SELECT * FROM users WHERE user_id = $1")
+        .bind(user_id)
+        .fetch_optional(&app.db)
+        .await
+        .unwrap();
+
+    match user {
+        Some(u) => Json(json!(UserProfile {
+            user_id: u.user_id,
+            username: u.username,
+        })),
+        None => Json(json!({"error": "user not found"})),
+    }
 }
 
 pub async fn get_user_by_id(

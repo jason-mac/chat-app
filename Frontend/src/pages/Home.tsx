@@ -40,6 +40,8 @@ function Home() {
 
       const data = await loginFetch(loginRequest);
       localStorage.setItem('token', data.token);
+      localStorage.setItem('user_id', data.user_id);
+      localStorage.setItem('username', data.username);
       navigate('/chat');
     } catch {
       setError('Could not connect to server');

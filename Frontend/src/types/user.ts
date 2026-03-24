@@ -4,3 +4,8 @@ export interface User {
   email: string;
   created_at: string;
 }
+
+export interface UserProfile {
+  user_id: string;
+  username: string;
+}

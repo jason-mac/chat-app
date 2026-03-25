@@ -31,7 +31,7 @@ export const fetchRecentChatItems = async () => {
     const id =
       myId === message.message_to ? message.message_from : message.message_to;
 
-    if (seen.has(id)) {
+    if (seen.has(id) || id === myId) {
       continue;
     } else {
       seen.add(id);

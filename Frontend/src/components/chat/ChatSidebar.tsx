@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { fetchRecentChatItems } from '../../services/recentChatItems.ts';
+import { fetchAllUsers } from '../../services/getUsers.ts';
 import type { UserProfile } from '../../types/user.ts';
 import type { Message } from '../../types/message.ts';
 import type { ChatItem } from '../../types/chatItem.ts';
@@ -40,6 +41,8 @@ const ChatItemJSX = ({
   );
 };
 
+type SideBarMode = 'conversation' | 'user';
+
 export default function ChatSidebar({
   currentUserProfile,
   setCurrentUserProfile,
@@ -47,8 +50,18 @@ export default function ChatSidebar({
 }: ChatSidebarProps) {
   const myId = localStorage.getItem('user_id');
   const [recentMessages, setRecentMessages] = useState<ChatItem[]>([]);
-  const [messages, setMessages] = useState<ChatItem[]>([]);
+  const [users, setUsers] = useState<UserProfile[]>([]);
   const [query, setQuery] = useState<string>('');
+  const [sideBarMode, setSideBarMode] = useState<SideBarMode>('conversation');
+  const [displayData, setDisplayData] = useState<ChatItem[]>(recentMessages);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      const data = await fetchAllUsers();
+      setUsers(data);
+    };
+    fetchData();
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -81,25 +94,39 @@ export default function ChatSidebar({
 
   useEffect(() => {
     if (query === '') {
-      setMessages(recentMessages);
+      if (sideBarMode === 'conversation') {
+        setDisplayData(recentMessages);
+      } else {
+        setDisplayData(
+          users.map((user) => ({ userProfile: user, message: '' }) as ChatItem)
+        );
+      }
+      return;
     }
+    const data =
+      sideBarMode === 'conversation'
+        ? recentMessages
+        : users.map((user) => ({ userProfile: user, message: '' }) as ChatItem);
+
     const regexMatch = (chatItem: ChatItem): boolean => {
       return chatItem.userProfile.username
         .toLowerCase()
         .includes(query.toLowerCase());
     };
-
-    const newMessages: ChatItem[] = recentMessages.filter(regexMatch);
-    setMessages(newMessages);
-  }, [recentMessages, query]);
+    setDisplayData(data.filter(regexMatch));
+  }, [sideBarMode, query, recentMessages, users]);
 
   return (
     <aside className="w-64 border-r border-[#222] flex flex-col">
-      <HeaderBox setRecentMessages={setRecentMessages} />
+      <HeaderBox
+        sideBarMode={sideBarMode}
+        setSideBarMode={setSideBarMode}
+        setRecentMessages={setRecentMessages}
+      />
       <SearchBox setQuery={setQuery} />
 
       <div className="flex-1 overflow-y-auto overflow-x-hidden">
-        {messages.map((item) => (
+        {displayData.map((item) => (
           <ChatItemJSX
             key={item.userProfile.user_id}
             userProfile={item.userProfile}
@@ -145,20 +172,72 @@ const SearchBox = ({
 
 const HeaderBox = ({
   setRecentMessages,
+  sideBarMode,
+  setSideBarMode,
 }: {
   setRecentMessages: React.Dispatch<React.SetStateAction<ChatItem[]>>;
+  sideBarMode: SideBarMode;
+  setSideBarMode: React.Dispatch<React.SetStateAction<SideBarMode>>;
 }) => {
+  const onClick = () => {
+    if (sideBarMode === 'user') {
+      setSideBarMode('conversation');
+    } else {
+      setSideBarMode('user');
+    }
+  };
   return (
-    <div className="p-4 border-b border border-[#222] flex items-center justify-between">
+    <div className="p-4 border-b border-[#222] flex items-center justify-between">
       <p className="text-xs text-[#555] uppercase tracking-widest">
-        conversations
+        {sideBarMode}
       </p>
-      <button
-        onClick={() => fetchRecentChatItems().then(setRecentMessages)}
-        className="text-[#555] hover:text-white text-lg cursor-pointer"
-      >
-        ↻
-      </button>
+      <div className="flex items-center gap-2">
+        <button
+          onClick={onClick}
+          className="text-[#555] hover:text-white cursor-pointer"
+        >
+          {sideBarMode === 'conversation' && <PersonIcon />}
+          {sideBarMode === 'user' && <MessageIcon />}
+        </button>
+        <button
+          onClick={() => fetchRecentChatItems().then(setRecentMessages)}
+          className="text-[#555] hover:text-white text-lg cursor-pointer"
+        >
+          ↻
+        </button>
+      </div>
     </div>
   );
 };
+
+const PersonIcon = () => (
+  <svg
+    className="w-4 h-4"
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"
+    />
+  </svg>
+);
+
+const MessageIcon = () => (
+  <svg
+    className="w-4 h-4"
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
+    />
+  </svg>
+);

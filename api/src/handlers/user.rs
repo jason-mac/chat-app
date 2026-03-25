@@ -23,14 +23,13 @@ pub async fn get_users(
     State(application): State<Application>,
     Extension(current_user): Extension<CurrentUser>,
 ) -> Json<Value> {
-    if current_user.role != "admin" {
-        return Json(json!({"error": "unauthorized"}));
-    }
-
-    let users = sqlx::query_as::<_, User>("SELECT * FROM users")
+    println!("current_user: {}", current_user.user_id);
+    let users = sqlx::query_as::<_, User>("SELECT * FROM users WHERE user_id != $1")
+        .bind(Uuid::parse_str(&current_user.user_id).unwrap())
         .fetch_all(&application.db)
         .await
         .unwrap();
+    println!("users returned: {:?}", users);
     let response: Vec<UserResponse> = users.into_iter().map(|u| to_user_response(u)).collect();
     Json(json!(response))
 }

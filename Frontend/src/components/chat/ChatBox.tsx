@@ -10,28 +10,52 @@ interface ChatHeaderProps {
 
 interface ChatMessageProps {
   message: string;
+  created_at: string;
 }
 
 const ChatHeader = ({ chatterName }: ChatHeaderProps) => {
+  const handleLogout = () => {
+    localStorage.clear();
+    window.location.href = '/';
+  };
   return (
-    <div className="p-4 border-b border-[#222]">
+    <div className="p-4 flex justify-between border-b border-[#222]">
       <p className="text-sm text-white">{chatterName}</p>
+      <button
+        onClick={handleLogout}
+        className="text-sm flex items-center gap-1 text-[#555] hover:text-white cursor-pointer"
+      >
+        logout
+        <LogoutIcon />
+      </button>
     </div>
   );
 };
 
-const ChatMessageSender = ({ message }: ChatMessageProps) => {
+const ChatMessageSender = ({ message, created_at }: ChatMessageProps) => {
   return (
-    <div className="self-end bg-white text-black text-sm px-3 py-2 max-w-[70%] break-words">
+    <div className="self-end bg-white text-black text-sm px-3 py-2 max-w-[50%] break-all break-words">
       {message}
+      <span className="text-xs text-[#999] ml-2 float-right mt-1">
+        {new Date(created_at).toLocaleTimeString([], {
+          hour: '2-digit',
+          minute: '2-digit',
+        })}
+      </span>
     </div>
   );
 };
 
-const ChatMessageReceiver = ({ message }: ChatMessageProps) => {
+const ChatMessageReceiver = ({ message, created_at }: ChatMessageProps) => {
   return (
-    <div className="self-start bg-[#111] text-white text-sm px-3 py-2 max-w-[70%] break-words border border-[#222]">
+    <div className="self-start bg-[#111] text-white text-sm px-3 py-2 max-w-[70%] break-all border border-[#222]">
       {message}
+      <span className="text-xs text-[#555] ml-2 float-right mt-1">
+        {new Date(created_at).toLocaleTimeString([], {
+          hour: '2-digit',
+          minute: '2-digit',
+        })}
+      </span>
     </div>
   );
 };
@@ -44,9 +68,17 @@ interface ChatMessagesProps {
 const ChatMessages = ({ myId, messages }: ChatMessagesProps) => {
   const messageBox = (msg: Message) => {
     return myId === msg.message_to ? (
-      <ChatMessageReceiver key={msg.message_id} message={msg.content} />
+      <ChatMessageReceiver
+        key={msg.message_id}
+        message={msg.content}
+        created_at={msg.created_at}
+      />
     ) : (
-      <ChatMessageSender key={msg.message_id} message={msg.content} />
+      <ChatMessageSender
+        key={msg.message_id}
+        message={msg.content}
+        created_at={msg.created_at}
+      />
     );
   };
   return <>{[...messages].reverse().map((msg) => messageBox(msg))}</>;
@@ -120,3 +152,19 @@ export default function ChatBox({
     </div>
   );
 }
+
+const LogoutIcon = () => (
+  <svg
+    className="w-4 h-4 ml-2"
+    fill="none"
+    stroke="currentColor"
+    viewBox="0 0 24 24"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+    />
+  </svg>
+);

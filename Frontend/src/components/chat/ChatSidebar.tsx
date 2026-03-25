@@ -44,7 +44,6 @@ const ChatItemJSX = ({
 type SideBarMode = 'conversation' | 'user';
 
 export default function ChatSidebar({
-  currentUserProfile,
   setCurrentUserProfile,
   recentMessageSent,
 }: ChatSidebarProps) {

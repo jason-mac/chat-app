@@ -1,12 +1,12 @@
 import ChatSidebar from '../components/chat/ChatSidebar';
 import ChatBox from '../components/chat/ChatBox';
+import type { UserProfile } from '../types/user';
 import { useState } from 'react';
 import type { Message } from '../types/message';
 
 function Chat() {
-  const [currentUserProfile, setCurrentUserProfile] = useState<Message | null>(
-    null
-  );
+  const [currentUserProfile, setCurrentUserProfile] =
+    useState<UserProfile | null>(null);
   const [recentMessageSent, setRecentMessageSent] = useState<Message | null>(
     null
   );

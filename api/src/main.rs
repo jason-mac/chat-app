@@ -11,12 +11,11 @@ use axum::Extension;
 
 use application::Application;
 use axum::http::Method;
+use axum::middleware;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tower_http::cors::{Any, CorsLayer};
-
-use axum::middleware;
 
 async fn log_request(
     req: axum::extract::Request,

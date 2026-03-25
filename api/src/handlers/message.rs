@@ -61,6 +61,32 @@ pub async fn get_message_by_id(
     }
 }
 
+pub async fn get_conversation(
+    State(app): State<Application>,
+    Extension(current_user): Extension<CurrentUser>,
+    Path(other_user_id): Path<Uuid>,
+) -> Json<Value> {
+    let db_query = r#"
+    SELECT * FROM messages 
+    WHERE (message_to = $1 AND message_from = $2)
+    OR (message_to = $2 AND message_from = $1)
+    ORDER BY created_at ASC
+    "#;
+
+    let messages: Vec<Message> = sqlx::query_as::<_, Message>(db_query)
+        .bind(Uuid::parse_str(&current_user.user_id).unwrap())
+        .bind(other_user_id)
+        .fetch_all(&app.db)
+        .await
+        .unwrap();
+
+    let response: Vec<MessageResponse> = messages
+        .into_iter()
+        .map(|m| to_message_response(m))
+        .collect();
+    Json(json!(response))
+}
+
 pub async fn create_message(
     State(app): State<Application>,
     Json(body): Json<CreateMessage>,

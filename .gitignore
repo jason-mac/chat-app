@@ -1,4 +1,5 @@
 api/target/
+api/useful_commands.txt
 api/.env
 
 Frontend/node_modules/

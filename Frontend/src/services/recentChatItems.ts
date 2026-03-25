@@ -17,6 +17,7 @@ export const fetchRecentChatItems = async () => {
     (b, a) =>
       new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
   );
+
   const recentChatItems: ChatItem[] = [];
 
   const seen = new Set<string>();
@@ -37,11 +38,10 @@ export const fetchRecentChatItems = async () => {
     }
 
     const userResult = await fetch(`${API_URL}/users/${id}/profile`);
-    const userProfile = await userResult.json();
+    const userProfile = (await userResult.json()) as UserProfile;
     recentChatItems.push({
-      user_id: id,
+      userProfile: userProfile,
       message: message.content,
-      user: userProfile.username,
     });
     count++;
   }

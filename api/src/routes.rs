@@ -2,7 +2,7 @@ use crate::Application;
 use crate::auth::middleware::auth_middleware;
 use crate::handlers::auth::{login, register};
 use crate::handlers::me::{delete_me, get_me, update_me};
-use crate::handlers::message::{get_message_by_id, get_messages};
+use crate::handlers::message::{get_conversation, get_message_by_id, get_messages};
 use crate::handlers::user::{
     delete_user, get_user_by_id, get_user_profile, get_users, update_user,
 };
@@ -23,7 +23,8 @@ pub fn create_router() -> Router<Application> {
 
     let message_routes: Router<Application> = Router::new()
         .route("/messages", get(get_messages))
-        .route("/messages/{id}", get(get_message_by_id));
+        .route("/messages/{id}", get(get_message_by_id))
+        .route("/messages/conversation/{id}", get(get_conversation));
 
     let web_socket_routes: Router<Application> = Router::new().route("/ws/{id}", get(ws_handler));
 

@@ -1,6 +1,8 @@
 use crate::application::Application;
 use crate::auth::jwt::verify_token;
 use crate::dtos::message::CreateMessage;
+use crate::dtos::message::MessageResponse;
+use crate::mappers::message::to_message_response;
 use axum::extract::Query;
 use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
 use axum::extract::{Path, State};
@@ -47,19 +49,24 @@ async fn handle_socket(socket: WebSocket, user_id: Uuid, app: Application) {
             let db_query = r#"
                 INSERT INTO messages (content, message_from, message_to)
                 VALUES ($1, $2, $3)
+                RETURNING *
             "#;
-
-            sqlx::query(db_query)
+            let saved: crate::models::message::Message = sqlx::query_as(db_query)
                 .bind(&body.content)
                 .bind(user_id)
                 .bind(body.message_to)
-                .execute(&app.db)
+                .fetch_one(&app.db)
                 .await
                 .unwrap();
 
+            let response: MessageResponse = to_message_response(saved);
+            let saved_json = serde_json::to_string(&response).unwrap();
             let users = app.connected_users.lock().await;
             if let Some(recipient_tx) = users.get(&body.message_to) {
-                let _ = recipient_tx.send(Message::Text(text.clone()));
+                let _ = recipient_tx.send(Message::Text(saved_json.clone().into()));
+            }
+            if let Some(sender_tx) = users.get(&user_id) {
+                let _ = sender_tx.send(Message::Text(saved_json.into()));
             }
         }
     }

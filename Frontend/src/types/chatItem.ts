@@ -1,5 +1,5 @@
+import type { UserProfile } from './user.ts';
 export interface ChatItem {
-  user_id: string;
-  user: string;
+  userProfile: UserProfile;
   message: string;
 }

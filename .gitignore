@@ -2,6 +2,8 @@ api/target/
 api/useful_commands.txt
 api/.env
 
+scripts/script.sh
+
 Frontend/node_modules/
 Frontend/.env
 Frontend/dist/

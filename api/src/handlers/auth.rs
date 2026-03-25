@@ -39,7 +39,10 @@ pub async fn login(
         .bind(&body.email)
         .fetch_one(&app.db)
         .await
-        .map_err(|_| StatusCode::UNAUTHORIZED)?;
+        .map_err(|e| {
+            println!("DB error: {:?}", e);
+            StatusCode::INTERNAL_SERVER_ERROR
+        })?;
 
     if !verify_password(&body.password, &user.password_hash) {
         return Err(StatusCode::UNAUTHORIZED);

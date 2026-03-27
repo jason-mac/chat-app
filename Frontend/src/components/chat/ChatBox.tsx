@@ -118,12 +118,12 @@ export default function ChatBox({
 
   const handleSend = (content: string) => {
     if (!currentUserProfile) return;
-    sendMessage(
-      JSON.stringify({
-        content,
-        message_to: currentUserProfile.user_id,
-      })
-    );
+    const message = {
+      content,
+      message_to: currentUserProfile.user_id,
+    } as Message;
+    sendMessage(JSON.stringify(message));
+    setChatMessages((prev) => [message, ...prev]);
   };
 
   useEffect(() => {

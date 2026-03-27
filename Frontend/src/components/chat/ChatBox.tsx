@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import ChatSendBox from './ChatSendBox';
+import { LRUCache } from 'lru-cache';
 import type { UserProfile } from '../../types/user';
 import type { Message } from '../../types/message';
 import { fetchRecentMessages } from '../../services/recentMessages';
@@ -89,6 +90,11 @@ interface ChatBoxProps {
   setRecentMessageSent: React.Dispatch<React.SetStateAction<Message | null>>;
 }
 
+const cachedMessages = new LRUCache<string, Message[]>({
+  max: 5,
+  ttl: 1000 * 60 * 2,
+});
+
 export default function ChatBox({
   currentUserProfile,
   setRecentMessageSent,
@@ -103,10 +109,11 @@ export default function ChatBox({
 
   const { sendMessage } = useWebSocket(myUserId, (msg) => {
     const parsed = JSON.parse(msg) as Message;
+    cachedMessages.delete(parsed.message_from);
     setRecentMessageSent(parsed);
-    setChatMessages((prev) => {
-      return [parsed, ...prev];
-    });
+    if (parsed.message_from === currentUserProfile?.user_id) {
+      setChatMessages((prev) => [parsed, ...prev]);
+    }
   });
 
   const handleSend = (content: string) => {
@@ -123,7 +130,15 @@ export default function ChatBox({
     if (!currentUserProfile) return;
     const fetchData = async () => {
       try {
+        if (cachedMessages.has(currentUserProfile.user_id)) {
+          console.log('cache hit');
+          setChatMessages(cachedMessages.get(currentUserProfile.user_id)!);
+          return;
+        }
         const data = await fetchRecentMessages(currentUserProfile.user_id);
+        console.log('cache miss');
+        cachedMessages.set(currentUserProfile.user_id, data);
+        cachedMessages.set(currentUserProfile.user_id, data);
         setChatMessages(data);
       } catch (err) {
         console.error('Failed to fetch messages:', err);

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { fetchRecentChatItems } from '../../services/recentChatItems.ts';
 import { fetchAllUsers } from '../../services/getUsers.ts';
+import { useMemo } from 'react';
 import type { UserProfile } from '../../types/user.ts';
 import type { Message } from '../../types/message.ts';
 import type { ChatItem } from '../../types/chatItem.ts';
@@ -43,6 +44,12 @@ const ChatItemJSX = ({
 
 type SideBarMode = 'conversation' | 'user';
 
+const getOtherId = (message: Message, myId: string) => {
+  return message.message_to === myId
+    ? message.message_from
+    : message.message_to;
+};
+
 export default function ChatSidebar({
   setCurrentUserProfile,
   recentMessageSent,
@@ -52,7 +59,17 @@ export default function ChatSidebar({
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [query, setQuery] = useState<string>('');
   const [sideBarMode, setSideBarMode] = useState<SideBarMode>('conversation');
-  const [displayData, setDisplayData] = useState<ChatItem[]>(recentMessages);
+
+  const displayData = useMemo(() => {
+    const data =
+      sideBarMode === 'conversation'
+        ? recentMessages
+        : users.map((user) => ({ userProfile: user, message: '' }) as ChatItem);
+    if (query === '') return data;
+    return data.filter((chatItem) =>
+      chatItem.userProfile.username.toLowerCase().includes(query.toLowerCase())
+    );
+  }, [sideBarMode, query, recentMessages, users]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -71,10 +88,7 @@ export default function ChatSidebar({
 
   useEffect(() => {
     if (!recentMessageSent) return;
-    const otherId: string =
-      myId === recentMessageSent.message_to
-        ? recentMessageSent.message_from
-        : recentMessageSent.message_to;
+    const otherId = getOtherId(recentMessageSent, myId!);
     let index = 0;
     while (index < recentMessages.length) {
       if (otherId === recentMessages[index].userProfile.user_id) break;
@@ -90,30 +104,6 @@ export default function ChatSidebar({
     newRecentMessages = [newChatItem, ...newRecentMessages];
     setRecentMessages(newRecentMessages);
   }, [recentMessageSent]);
-
-  useEffect(() => {
-    if (query === '') {
-      if (sideBarMode === 'conversation') {
-        setDisplayData(recentMessages);
-      } else {
-        setDisplayData(
-          users.map((user) => ({ userProfile: user, message: '' }) as ChatItem)
-        );
-      }
-      return;
-    }
-    const data =
-      sideBarMode === 'conversation'
-        ? recentMessages
-        : users.map((user) => ({ userProfile: user, message: '' }) as ChatItem);
-
-    const regexMatch = (chatItem: ChatItem): boolean => {
-      return chatItem.userProfile.username
-        .toLowerCase()
-        .includes(query.toLowerCase());
-    };
-    setDisplayData(data.filter(regexMatch));
-  }, [sideBarMode, query, recentMessages, users]);
 
   return (
     <aside className="w-64 border-r border-[#222] flex flex-col">

@@ -9,3 +9,8 @@ export interface UserProfile {
   user_id: string;
   username: string;
 }
+
+export interface UserStatus {
+  user_id: string;
+  status: boolean;
+}

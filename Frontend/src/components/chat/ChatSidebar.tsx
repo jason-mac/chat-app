@@ -16,11 +16,27 @@ interface ChatSidebarProps {
 
 interface ChatItemJSXProps {
   userProfile: UserProfile;
-  message: string;
+  message: Message | null;
   setCurrentUserProfile: React.Dispatch<
     React.SetStateAction<UserProfile | null>
   >;
 }
+
+const messageDate = (date: Date) => {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+  const msgDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+  if (msgDay.getTime() === today.getTime()) {
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  } else if (msgDay.getTime() === yesterday.getTime()) {
+    return 'Yesterday';
+  } else {
+    return date.toLocaleDateString('en-CA');
+  }
+};
 
 const ChatItemJSX = ({
   userProfile,
@@ -34,10 +50,17 @@ const ChatItemJSX = ({
   return (
     <div
       onClick={changeProfile}
-      className="px-4 py-3 hover:bg-[#111] cursor-pointer border-b border-[#1a1a1a]"
+      className="px-4 flex justify-between items-center py-3 hover:bg-[#111] cursor-pointer border-b border-[#1a1a1a]"
     >
-      <p className="text-sm text-white">{userProfile.username}</p>
-      <p className="text-xs text-[#555] mt-0.5">{message}</p>
+      <div>
+        <p className="text-sm text-white">{userProfile.username}</p>
+        <p className="text-xs text-[#555] mt-0.5 truncate w-32">
+          {message ? message.content : ''}
+        </p>
+      </div>
+      <span className="text-xs">
+        {message ? messageDate(new Date(message.created_at)) : ''}
+      </span>
     </div>
   );
 };
@@ -64,7 +87,9 @@ export default function ChatSidebar({
     const data =
       sideBarMode === 'conversation'
         ? recentMessages
-        : users.map((user) => ({ userProfile: user, message: '' }) as ChatItem);
+        : users.map(
+            (user) => ({ userProfile: user, message: null }) as ChatItem
+          );
     if (query === '') return data;
     return data.filter((chatItem) =>
       chatItem.userProfile.username.toLowerCase().includes(query.toLowerCase())
@@ -81,7 +106,8 @@ export default function ChatSidebar({
 
   useEffect(() => {
     const fetchData = async () => {
-      setRecentMessages(await fetchRecentChatItems());
+      const data = await fetchRecentChatItems();
+      setRecentMessages(data);
     };
     fetchData();
   }, []);
@@ -98,7 +124,7 @@ export default function ChatSidebar({
 
     const newChatItem: ChatItem = {
       ...recentMessages[index],
-      message: recentMessageSent.content,
+      message: recentMessageSent,
     };
     let newRecentMessages = recentMessages.filter((_, i) => i !== index);
     newRecentMessages = [newChatItem, ...newRecentMessages];
@@ -135,7 +161,7 @@ const SearchBox = ({
 }) => {
   return (
     <div className="px-4 py-3 border-b border-[#222]">
-      <div className="flex items-center gap-2 bg-[#111] border border-[#333] px-3 py-1.5">
+      <div className="flex rounded-2xl items-center gap-2 bg-[#111] border border-[#333] px-3 py-1.5">
         <svg
           className="w-3.5 h-3.5 text-[#555]"
           fill="none"

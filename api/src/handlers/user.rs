@@ -1,9 +1,11 @@
+use crate::HashMap;
 use crate::application::Application;
 use crate::{
-    dtos::user::{CreateUser, UpdateUser, UserProfile, UserResponse},
+    dtos::user::{CreateUser, UpdateUser, UserOnline, UserProfile, UserResponse},
     mappers::user::to_user_response,
     models::user::User,
 };
+use axum::extract::Query;
 
 use uuid::Uuid;
 
@@ -31,6 +33,18 @@ pub async fn get_users(
         .unwrap();
     println!("users returned: {:?}", users);
     let response: Vec<UserResponse> = users.into_iter().map(|u| to_user_response(u)).collect();
+    Json(json!(response))
+}
+
+pub async fn get_user_online(
+    State(application): State<Application>,
+    Extension(current_user): Extension<CurrentUser>,
+    Path(user_id): Path<Uuid>,
+) -> Json<Value> {
+    println!("current_user: {}", current_user.user_id);
+    let connected = application.connected_users.lock().await;
+    let status: bool = connected.contains_key(&user_id);
+    let response: UserOnline = UserOnline { user_id, status };
     Json(json!(response))
 }
 

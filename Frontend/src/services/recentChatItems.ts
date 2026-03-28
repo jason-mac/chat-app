@@ -41,7 +41,7 @@ export const fetchRecentChatItems = async () => {
     const userProfile = (await userResult.json()) as UserProfile;
     recentChatItems.push({
       userProfile: userProfile,
-      message: message.content,
+      message: message,
     });
     count++;
   }

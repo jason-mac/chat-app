@@ -4,7 +4,7 @@ use crate::handlers::auth::{login, register};
 use crate::handlers::me::{delete_me, get_me, update_me};
 use crate::handlers::message::{get_conversation, get_message_by_id, get_messages};
 use crate::handlers::user::{
-    delete_user, get_user_by_id, get_user_profile, get_users, update_user,
+    delete_user, get_user_by_id, get_user_online, get_user_profile, get_users, update_user,
 };
 use crate::handlers::ws::ws_handler;
 use axum::middleware;
@@ -17,6 +17,7 @@ use serde_json::json;
 pub fn create_router() -> Router<Application> {
     let user_routes: Router<Application> = Router::new()
         .route("/users", get(get_users))
+        .route("/users/{id}/online", get(get_user_online))
         .route("/users/{id}", get(get_user_by_id))
         .route("/users/{id}", delete(delete_user))
         .route("/users/{id}", patch(update_user));

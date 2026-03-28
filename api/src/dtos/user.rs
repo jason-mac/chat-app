@@ -30,3 +30,9 @@ pub struct UserProfile {
     pub user_id: Uuid,
     pub username: String,
 }
+
+#[derive(Serialize)]
+pub struct UserOnline {
+    pub user_id: Uuid,
+    pub status: bool,
+}

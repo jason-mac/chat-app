@@ -5,3 +5,21 @@ export interface Message {
   message_to: string;
   created_at: string;
 }
+
+export interface CreateMessage {
+  content: string;
+  message_to: string;
+}
+
+export interface MessageResponse {
+  message_id: string;
+  content: string;
+  message_from: string;
+  message_to: string;
+  created_at: string;
+}
+
+export interface MarkMessageRead {
+  user_id: string;
+  message_id: string;
+}

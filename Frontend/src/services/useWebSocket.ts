@@ -1,9 +1,10 @@
 import { useEffect, useRef } from 'react';
 import { WS_URL } from '../config';
+import type { WsRequest, WsResponse } from '../types/websocket';
 
 export const useWebSocket = (
   userId: string,
-  onMessage: (msg: string) => void
+  onMessage: (msg: WsResponse) => void
 ) => {
   const ws = useRef<WebSocket | null>(null);
   const onMessageRef = useRef(onMessage);
@@ -16,7 +17,8 @@ export const useWebSocket = (
     const token = localStorage.getItem('token');
     ws.current = new WebSocket(`${WS_URL}/ws/${userId}?token=${token}`);
     ws.current.onmessage = (event) => {
-      onMessageRef.current(event.data);
+      const parsed = JSON.parse(event.data);
+      onMessageRef.current(parsed);
     };
     ws.current.onopen = () => console.log('connected');
     ws.current.onclose = () => console.log('disconnected');
@@ -25,8 +27,8 @@ export const useWebSocket = (
     };
   }, [userId]);
 
-  const sendMessage = (msg: string) => {
-    ws.current?.send(msg);
+  const sendMessage = (msg: WsRequest) => {
+    ws.current?.send(JSON.stringify(msg));
   };
 
   return { sendMessage };

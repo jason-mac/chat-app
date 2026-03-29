@@ -32,14 +32,7 @@ export default function ChatSendBox({ onSend }: ChatSendBoxProps) {
         }}
       />
       <button
-        onClick={() => {
-          if (message === '') {
-            setPlaceHolder('cannot send empty message try again');
-            return;
-          }
-          onSend(message);
-          setMessage('');
-        }}
+        onClick={handleEnter}
         className="px-4 py-2 cursor-pointer rounded-2xl bg-white text-black text-sm"
       >
         send

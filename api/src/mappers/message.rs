@@ -1,3 +1,5 @@
+use uuid::Uuid;
+
 use crate::dtos::message::MessageResponse;
 use crate::models::message::Message;
 

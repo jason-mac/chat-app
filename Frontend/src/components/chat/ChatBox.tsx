@@ -1,14 +1,17 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import type { UserStatus } from '../../types/user';
 import { OnlineIndicator, OfflineIndicator } from '../ui/UserStatus';
 import ChatSendBox from './ChatSendBox';
 import { LRUCache } from 'lru-cache';
-import type { UserProfile } from '../../types/user';
-import type { Message } from '../../types/message';
 import { fetchRecentMessages } from '../../services/recentMessages';
-import { useWebSocket } from '../../services/websocket';
+import { useWebSocket } from '../../services/useWebSocket';
 import { fetchUserStatus } from '../../services/getUserStatus';
+import { fetchMessageReadEntries } from '../../services/getMessageReadByUsers';
+
+import type { UserStatus } from '../../types/user';
+import type { UserProfile } from '../../types/user';
+import type { Message, MessageResponse } from '../../types/message';
+import type { MessageReadResponse } from '../../types/messageRead';
 
 interface ChatHeaderProps {
   chatterName: string;
@@ -150,84 +153,157 @@ export default function ChatBox({
   setRecentMessageSent,
 }: ChatBoxProps) {
   const myUserId = localStorage.getItem('user_id') ?? '';
+
   const [chatMessages, setChatMessages] = useState<Message[]>([]);
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const chatMessagesRef = useRef<Message[]>([]);
+  const currentUserProfileRef = useRef(currentUserProfile);
   const [userStatus, setUserStatus] = useState<UserStatus | null>(null);
+  const [messageRead, setMessageRead] = useState(false);
+  const bottomRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    currentUserProfileRef.current = currentUserProfile;
+  }, [currentUserProfile]);
+
+  useEffect(() => {
+    chatMessagesRef.current = chatMessages;
+  }, [chatMessages]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView();
   }, [chatMessages]);
 
   const { sendMessage } = useWebSocket(myUserId, (msg) => {
-    const parsed = JSON.parse(msg) as Message;
-    cachedMessages.delete(parsed.message_from);
-    setRecentMessageSent(parsed);
-    if (parsed.message_from === currentUserProfile?.user_id) {
-      setChatMessages((prev) => [parsed, ...prev]);
+    switch (msg.type) {
+      case 'new_message': {
+        const message: MessageResponse = msg.payload;
+        if (!currentUserProfileRef.current) return;
+
+        const isConversation =
+          (message.message_from === currentUserProfileRef.current.user_id &&
+            message.message_to === myUserId) ||
+          (message.message_from === myUserId &&
+            message.message_to === currentUserProfileRef.current.user_id);
+
+        if (!isConversation) return;
+
+        if (message.message_to === myUserId) {
+          sendMessage({
+            type: 'notify_read',
+            payload: { message_id: message.message_id },
+          });
+        }
+
+        cachedMessages.delete(currentUserProfileRef.current.user_id);
+        setRecentMessageSent(message);
+        setChatMessages((prev) => [message, ...prev]);
+        break;
+      }
+
+      case 'message_read': {
+        const read = msg.payload;
+        const first = chatMessagesRef.current[0];
+
+        if (
+          first &&
+          first.message_id === read.message_id &&
+          first.message_to === read.reader_id
+        ) {
+          setMessageRead(true);
+        }
+        break;
+      }
     }
   });
 
   const handleSend = (content: string) => {
     if (!currentUserProfile) return;
-    const message = {
-      content,
-      message_to: currentUserProfile.user_id,
-      created_at: new Date().toISOString(),
-    } as Message;
-    sendMessage(JSON.stringify(message));
-    setChatMessages((prev) => [message, ...prev]);
+
+    sendMessage({
+      type: 'send_message',
+      payload: {
+        content,
+        message_to: currentUserProfile.user_id,
+      },
+    });
   };
 
   useEffect(() => {
     if (!currentUserProfile) return;
-    const fetchData = async () => {
+    if (chatMessages.length === 0) return;
+
+    const fetchReads = async () => {
+      const msg = chatMessages[0];
+
+      if (msg.message_from !== myUserId) return;
+
       try {
-        const data = await fetchUserStatus(currentUserProfile.user_id);
-        setUserStatus(data);
+        const data = await fetchMessageReadEntries(msg.message_id);
+
+        const read = data.read_by.some(
+          (r: MessageReadResponse) => r.reader_id === msg.message_to
+        );
+
+        setMessageRead(read);
       } catch (err) {
-        console.log('Failed to fetch user status:', err);
+        console.log(err);
       }
     };
-    fetchData();
+
+    fetchReads();
+  }, [chatMessages, currentUserProfile]);
+
+  useEffect(() => {
+    if (!currentUserProfile) return;
+
+    fetchUserStatus(currentUserProfile.user_id)
+      .then(setUserStatus)
+      .catch(console.error);
   }, [currentUserProfile]);
 
   useEffect(() => {
     if (!currentUserProfile) return;
-    const fetchData = async () => {
+
+    const load = async () => {
       try {
         if (cachedMessages.has(currentUserProfile.user_id)) {
-          console.log('cache hit');
           setChatMessages(cachedMessages.get(currentUserProfile.user_id)!);
           return;
         }
+
         const data = await fetchRecentMessages(currentUserProfile.user_id);
-        console.log('cache miss');
+
         cachedMessages.set(currentUserProfile.user_id, data);
         setChatMessages(data);
       } catch (err) {
-        console.error('Failed to fetch messages:', err);
+        console.error(err);
       }
     };
-    fetchData();
+
+    load();
   }, [currentUserProfile]);
 
   return (
     <div className="flex-1 flex flex-col min-w-0">
       <ChatHeader
-        chatterName={
-          currentUserProfile ? currentUserProfile.username : 'Select a chat'
-        }
+        chatterName={currentUserProfile?.username ?? 'Select a chat'}
         userStatus={userStatus}
       />
-      <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3 w-full scrollbar-none">
+
+      <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3 scrollbar-none">
         {currentUserProfile && (
-          <ChatMessages
-            myId={localStorage.getItem('user_id')!}
-            messages={chatMessages}
-          />
+          <ChatMessages myId={myUserId} messages={chatMessages} />
         )}
+
+        {chatMessages.length > 0 &&
+          chatMessages[0].message_from === myUserId &&
+          messageRead && (
+            <span className="text-xs text-gray-500 self-end pr-2">Seen</span>
+          )}
+
         <div ref={bottomRef} />
       </div>
+
       {currentUserProfile && <ChatSendBox onSend={handleSend} />}
     </div>
   );

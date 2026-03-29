@@ -3,6 +3,7 @@ use crate::auth::middleware::auth_middleware;
 use crate::handlers::auth::{login, register};
 use crate::handlers::me::{delete_me, get_me, update_me};
 use crate::handlers::message::{get_conversation, get_message_by_id, get_messages};
+use crate::handlers::message_read::{get_message_read, get_message_reads};
 use crate::handlers::user::{
     delete_user, get_user_by_id, get_user_online, get_user_profile, get_users, update_user,
 };
@@ -15,26 +16,31 @@ use axum::{http::StatusCode, response::IntoResponse};
 use serde_json::json;
 
 pub fn create_router() -> Router<Application> {
-    let user_routes: Router<Application> = Router::new()
+    let user_routes = Router::new()
         .route("/users", get(get_users))
-        .route("/users/{id}/online", get(get_user_online))
-        .route("/users/{id}", get(get_user_by_id))
-        .route("/users/{id}", delete(delete_user))
-        .route("/users/{id}", patch(update_user));
+        .route("/users/{user_id}/online", get(get_user_online))
+        .route("/users/{user_id}", get(get_user_by_id))
+        .route("/users/{user_id}", delete(delete_user))
+        .route("/users/{user_id}", patch(update_user));
 
-    let message_routes: Router<Application> = Router::new()
+    let message_routes = Router::new()
         .route("/messages", get(get_messages))
-        .route("/messages/{id}", get(get_message_by_id))
-        .route("/messages/conversation/{id}", get(get_conversation));
+        .route("/messages/{message_id}", get(get_message_by_id))
+        .route("/messages/conversation/{user_id}", get(get_conversation))
+        .route("/messages/{message_id}/read", get(get_message_reads))
+        .route(
+            "/messages/{message_id}/read/{user_id}",
+            get(get_message_read),
+        );
 
-    let web_socket_routes: Router<Application> = Router::new().route("/ws/{id}", get(ws_handler));
+    let web_socket_routes = Router::new().route("/ws/{id}", get(ws_handler));
 
-    let me_routes: Router<Application> = Router::new()
+    let me_routes = Router::new()
         .route("/me", get(get_me))
         .route("/me", patch(update_me))
         .route("/me", delete(delete_me));
 
-    let auth_routes: Router<Application> = Router::new()
+    let auth_routes = Router::new()
         .route("/auth/login", post(login))
         .route("/auth/register", post(register));
 

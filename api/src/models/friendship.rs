@@ -14,7 +14,7 @@ pub enum FriendshipStatus {
     Declined,
 }
 
-#[derive(Debug, FromRow)]
+#[derive(Debug, FromRow, Serialize, Deserialize)]
 pub struct Friendship {
     pub receiver_id: Uuid,
     pub requester_id: Uuid,

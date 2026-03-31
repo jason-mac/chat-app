@@ -9,7 +9,9 @@ use crate::handlers::user::{
 };
 
 use crate::handlers::friendship::{
-    accept_friend_request, decline_friend_request, delete_friend, get_friends, send_friend_request,
+    accept_friend_request, decline_friend_request, delete_friend, get_friends,
+    get_pending_friend_requests_incoming, get_pending_friend_requests_outgoing,
+    send_friend_request,
 };
 use crate::handlers::ws::ws_handler;
 use axum::middleware;
@@ -33,14 +35,14 @@ pub fn create_router() -> Router<Application> {
             "/friend-requests/{request_id}/decline",
             patch(decline_friend_request),
         )
-        // .route(
-        //     "/friend-requests/incoming",
-        //     get(get_pending_friend_requests_incoming),
-        // )
-        // .route(
-        //     "/friend-requests/outgoing",
-        //     get(get_pending_friend_requests_outgoing),
-        // )
+        .route(
+            "/friend-requests/incoming",
+            get(get_pending_friend_requests_incoming),
+        )
+        .route(
+            "/friend-requests/outgoing",
+            get(get_pending_friend_requests_outgoing),
+        )
         .route(
             "/friend-requests/{request_id}/accept",
             patch(accept_friend_request),

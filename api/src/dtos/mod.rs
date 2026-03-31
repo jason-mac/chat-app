@@ -1,3 +1,4 @@
+pub mod conversation;
 pub mod friendship;
 pub mod login;
 pub mod message;

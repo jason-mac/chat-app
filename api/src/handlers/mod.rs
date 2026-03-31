@@ -1,4 +1,5 @@
 pub mod auth;
+pub mod conversation;
 pub mod friendship;
 pub mod me;
 pub mod message;

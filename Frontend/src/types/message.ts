@@ -1,19 +1,31 @@
-export interface Message {
-  message_id: string;
+export interface CreateGroupMessage {
   content: string;
-  message_from: string;
-  message_to: string;
+  conversation_id: string;
+}
+
+export interface CreateDirectMessage {
+  content: string;
+  conversation_id?: string;
+  receiver_id: string;
+}
+
+export interface MessageResponse {
+  message_id: string;
+  conversation_id: string;
+  content: string;
+  sender_id: string;
   created_at: string;
 }
 
-export type MessageResponse = Message;
-
-export interface CreateMessage {
-  content: string;
-  message_to: string;
+export interface MessageQuery {
+  limit?: number;
+  offset?: number;
 }
 
-export interface MarkMessageRead {
-  user_id: string;
+export interface Message {
   message_id: string;
+  conversation_id: string;
+  content: string;
+  sender_id: string;
+  created_at: string;
 }

@@ -1,15 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { PersonIcon } from '../../ui/Icons.tsx';
 import { HeaderBox } from './HeaderBox.tsx';
 import { SearchBox } from './SearchBox.tsx';
 import { ChatItemJSX } from './ChatItemJSX.tsx';
 import { fetchRecentChatItems } from '../../../services/recentChatItems.ts';
 import { fetchAllUsers } from '../../../services/getUsers.ts';
-import { useMemo } from 'react';
+import { Avatar } from '../../ui/Avatar.tsx';
 import type { UserProfile } from '../../../types/user.ts';
 import type { Message } from '../../../types/message.ts';
-import type { ChatItem } from '../../../types/chatItem.ts';
-import { Avatar } from '../../ui/Avatar.tsx';
+import type { ChatItem } from '../../../types/chat-item.ts';
 
 interface ChatSidebarProps {
   currentUserProfile: UserProfile | null;
@@ -20,9 +19,6 @@ interface ChatSidebarProps {
 }
 
 type SideBarMode = 'conversation' | 'user';
-
-const getOtherId = (message: Message, myId: string) =>
-  message.message_to === myId ? message.message_from : message.message_to;
 
 export default function ChatSidebar({
   currentUserProfile,
@@ -65,14 +61,15 @@ export default function ChatSidebar({
   }, []);
 
   useEffect(() => {
-    if (!recentMessageSent) return;
-    const otherId = getOtherId(recentMessageSent, myId!);
+    if (!recentMessageSent || !myId) return;
+    const conversationId = recentMessageSent.conversation_id;
     let index = 0;
     while (index < recentMessages.length) {
-      if (otherId === recentMessages[index].userProfile.user_id) break;
+      if (conversationId === recentMessages[index].message?.conversation_id)
+        break;
       index++;
     }
-    // handle this case later, need new design if (index >= recentMessages.length) {}
+    if (index >= recentMessages.length) return;
     const newChatItem: ChatItem = {
       ...recentMessages[index],
       message: recentMessageSent,
@@ -108,12 +105,7 @@ export default function ChatSidebar({
         </div>
         <button className="relative group p-2 rounded hover:bg-[#232428] transition">
           <PersonIcon />
-
-          <span
-            className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 
-                 opacity-0 group-hover:opacity-100 transition 
-                 text-xs bg-black text-white px-2 py-1 rounded whitespace-nowrap"
-          >
+          <span className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition text-xs bg-black text-white px-2 py-1 rounded whitespace-nowrap">
             Add friend
           </span>
         </button>

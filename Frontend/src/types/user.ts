@@ -1,4 +1,15 @@
-export interface User {
+export interface CreateUser {
+  username: string;
+  email: string;
+  password: string;
+}
+
+export interface UpdateUser {
+  username?: string;
+  email?: string;
+}
+
+export interface UserResponse {
   user_id: string;
   username: string;
   email: string;
@@ -10,7 +21,7 @@ export interface UserProfile {
   username: string;
 }
 
-export interface UserStatus {
+export interface UserOnline {
   user_id: string;
   status: boolean;
 }

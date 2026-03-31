@@ -1,6 +1,6 @@
 import { MessageIcon, PersonIcon } from '../../ui/Icons';
 import { fetchRecentChatItems } from '../../../services/recentChatItems';
-import type { ChatItem } from '../../../types/chatItem';
+import type { ChatItem } from '../../../types/chat-item';
 
 type SideBarMode = 'conversation' | 'user';
 

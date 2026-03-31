@@ -1,7 +1,7 @@
 import { API_URL } from '../config';
-import type LoginRequest from '../types/loginRequest';
-import type LoginResponse from '../types/loginResponse';
-import type RegisterRequest from '../types/registerRequest';
+import type { LoginRequest } from '../types/login';
+import type { LoginResponse } from '../types/login';
+import type { RegisterRequest } from '../types/register';
 
 export const loginFetch = async (
   body: LoginRequest

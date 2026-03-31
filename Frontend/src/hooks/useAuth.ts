@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { registerFetch, loginFetch } from '../services/auth';
-import type RegisterRequest from '../types/registerRequest';
-import type LoginRequest from '../types/loginRequest';
+import type { RegisterRequest } from '../types/register';
+import type { LoginRequest } from '../types/login';
 
 export function useAuth() {
   const navigate = useNavigate();

@@ -1,14 +1,24 @@
-import type { CreateMessage, MessageResponse } from './message';
-import type { NotifyMessageRead, MessageReadResponse } from './messageRead';
+import type {
+  CreateDirectMessage,
+  CreateGroupMessage,
+  MessageResponse,
+} from './message';
 
-export type SendMessage = {
-  type: 'send_message';
-  payload: CreateMessage;
+import type { NotifyRead, MessageReadResponse } from './message-read';
+
+export type SendDirectMessage = {
+  type: 'send_direct_message';
+  payload: CreateDirectMessage;
 };
 
-export type NotifyRead = {
+export type SendGroupMessage = {
+  type: 'send_group_message';
+  payload: CreateGroupMessage;
+};
+
+export type NotifyReadRequest = {
   type: 'notify_read';
-  payload: NotifyMessageRead;
+  payload: NotifyRead;
 };
 
 export type Ping = {
@@ -25,6 +35,9 @@ export type NewMessage = {
   payload: MessageResponse;
 };
 
-export type WsRequest = SendMessage | NotifyRead | Ping;
-
+export type WsRequest =
+  | SendDirectMessage
+  | SendGroupMessage
+  | NotifyReadRequest
+  | Ping;
 export type WsResponse = MessageRead | NewMessage;

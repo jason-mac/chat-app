@@ -1,5 +1,5 @@
-#![allow(unused)]
 // TODO: REMOVE
+#![allow(unused)]
 mod application;
 mod auth;
 mod db;
@@ -30,6 +30,7 @@ async fn log_request(
 async fn main() {
     dotenvy::dotenv().ok();
 
+    // migrations auto ran
     let pool = db::create_pool().await;
 
     let application = Application {

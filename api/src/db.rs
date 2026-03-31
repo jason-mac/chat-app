@@ -4,9 +4,16 @@ use sqlx::postgres::PgPoolOptions;
 pub async fn create_pool() -> PgPool {
     let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set in .env");
 
-    PgPoolOptions::new()
+    let pool = PgPoolOptions::new()
         .max_connections(5)
         .connect(&database_url)
         .await
-        .expect("Failed to connect to Postgres")
+        .expect("Failed to connect to PostgresDB");
+
+    sqlx::migrate!()
+        .run(&pool)
+        .await
+        .expect("Migrations failed");
+
+    pool
 }

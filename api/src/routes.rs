@@ -7,6 +7,10 @@ use crate::handlers::message_read::{get_message_read, get_message_reads};
 use crate::handlers::user::{
     delete_user, get_user_by_id, get_user_online, get_user_profile, get_users, update_user,
 };
+
+use crate::handlers::friendship::{
+    accept_friend_request, decline_friend_request, delete_friend, get_friends, send_friend_request,
+};
 use crate::handlers::ws::ws_handler;
 use axum::middleware;
 use axum::routing::{Router, delete, get, patch, post};
@@ -22,6 +26,27 @@ pub fn create_router() -> Router<Application> {
         .route("/users/{user_id}", get(get_user_by_id))
         .route("/users/{user_id}", delete(delete_user))
         .route("/users/{user_id}", patch(update_user));
+
+    let friendship_routes = Router::new()
+        .route("/friend-requests", post(send_friend_request))
+        .route(
+            "/friend-requests/{request_id}/decline",
+            patch(decline_friend_request),
+        )
+        // .route(
+        //     "/friend-requests/incoming",
+        //     get(get_pending_friend_requests_incoming),
+        // )
+        // .route(
+        //     "/friend-requests/outgoing",
+        //     get(get_pending_friend_requests_outgoing),
+        // )
+        .route(
+            "/friend-requests/{request_id}/accept",
+            patch(accept_friend_request),
+        )
+        .route("/friends", get(get_friends))
+        .route("/friends/{friend_id}", delete(delete_friend));
 
     let message_routes = Router::new()
         .route("/messages", get(get_messages))
@@ -55,6 +80,7 @@ pub fn create_router() -> Router<Application> {
                         .merge(user_routes)
                         .merge(message_routes)
                         .merge(me_routes)
+                        .merge(friendship_routes)
                         .route_layer(middleware::from_fn(auth_middleware)),
                 ),
         )

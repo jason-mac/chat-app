@@ -5,9 +5,8 @@ interface ChatSendBoxProps {
 }
 
 export default function ChatSendBox({ onSend }: ChatSendBoxProps) {
-  const defaultPlaceHolder = 'type message here...';
   const [message, setMessage] = useState<string>('');
-  const [placeHolder, setPlaceHolder] = useState(defaultPlaceHolder);
+
   const handleEnter = () => {
     if (message !== '') {
       onSend(message);
@@ -16,24 +15,19 @@ export default function ChatSendBox({ onSend }: ChatSendBoxProps) {
   };
 
   return (
-    <div className="p-4 border-t border-[#222] flex gap-2">
+    <div className="px-4 py-3 flex gap-2 bg-[#313338]">
       <input
         value={message}
-        onChange={(e) => {
-          if (placeHolder !== defaultPlaceHolder) {
-            setPlaceHolder(defaultPlaceHolder);
-          }
-          setMessage(e.target.value);
-        }}
-        className="flex-1 rounded-2xl bg-[#111] border border-[#222] text-white text-sm px-3 py-2 outline-none font-mono"
-        placeholder={placeHolder}
+        onChange={(e) => setMessage(e.target.value)}
+        className="flex-1 rounded-md bg-[#383a40] border-none text-[#dbdee1] text-sm px-3 py-2 outline-none font-mono placeholder-[#80848e]"
+        placeholder="type a message..."
         onKeyDown={(e) => {
           if (e.key === 'Enter') handleEnter();
         }}
       />
       <button
         onClick={handleEnter}
-        className="px-4 py-2 cursor-pointer rounded-2xl bg-white text-black text-sm"
+        className="px-4 py-2 cursor-pointer rounded-md bg-[#5865f2] hover:bg-[#4752c4] text-white text-sm transition-colors"
       >
         send
       </button>

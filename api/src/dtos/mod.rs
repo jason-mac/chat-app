@@ -1,3 +1,4 @@
+pub mod friendship;
 pub mod login;
 pub mod message;
 pub mod message_read;

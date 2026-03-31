@@ -3,48 +3,53 @@ import type { Message } from '../types/message';
 import type { UserProfile } from '../types/user';
 import type { ChatItem } from '../types/chatItem';
 
-export const fetchRecentChatItems = async () => {
-  const res = await fetch(`${API_URL}/messages`, {
-    headers: {
-      Authorization: `Bearer ${localStorage.getItem('token')}`,
-    },
-  });
+const getAuthHeaders = () => ({
+  Authorization: `Bearer ${localStorage.getItem('token')}`,
+});
 
+export const fetchRecentChatItems = async (): Promise<ChatItem[]> => {
+  const myId = localStorage.getItem('user_id');
+  if (!myId) throw new Error('Cannot find user_id');
+
+  const res = await fetch(`${API_URL}/messages`, { headers: getAuthHeaders() });
   if (!res.ok) throw new Error('Failed to fetch messages');
 
-  let data = (await res.json()) as Message[];
-  data = data.toSorted(
-    (b, a) =>
-      new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+  const data = (await res.json()) as Message[];
+  data.sort(
+    (a, b) =>
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
   );
 
-  const recentChatItems: ChatItem[] = [];
-
+  const uniqueIds: string[] = [];
   const seen = new Set<string>();
 
-  let count = 0;
-  const myId = localStorage.getItem('user_id');
-
-  for (const message of data) {
-    if (count === 10) break;
-
-    const id =
-      myId === message.message_to ? message.message_from : message.message_to;
-
-    if (seen.has(id) || id === myId) {
-      continue;
-    } else {
+  for (const msg of data) {
+    if (uniqueIds.length === 10) break;
+    const id: string =
+      msg.message_to === myId ? msg.message_from : msg.message_to;
+    if (id !== myId && !seen.has(id)) {
       seen.add(id);
+      uniqueIds.push(id);
     }
-
-    const userResult = await fetch(`${API_URL}/users/${id}/profile`);
-    const userProfile = (await userResult.json()) as UserProfile;
-    recentChatItems.push({
-      userProfile: userProfile,
-      message: message,
-    });
-    count++;
   }
 
-  return recentChatItems;
+  const results = await Promise.allSettled(
+    uniqueIds.map(async (id) => {
+      const message = data.find(
+        (m) => m.message_from === id || m.message_to === id
+      )!;
+      const userResult = await fetch(`${API_URL}/users/${id}/profile`, {
+        headers: getAuthHeaders(),
+      });
+      if (!userResult.ok) throw new Error(`Failed to fetch profile for ${id}`);
+      const userProfile = (await userResult.json()) as UserProfile;
+      return { userProfile, message } as ChatItem;
+    })
+  );
+
+  return results
+    .filter(
+      (r): r is PromiseFulfilledResult<ChatItem> => r.status === 'fulfilled'
+    )
+    .map((r) => r.value);
 };

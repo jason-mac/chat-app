@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { Avatar } from '../ui/Avatar';
 import { motion } from 'framer-motion';
 import { OnlineIndicator, OfflineIndicator } from '../ui/UserStatus';
 import ChatSendBox from './ChatSendBox';
@@ -21,6 +22,7 @@ interface ChatHeaderProps {
 interface ChatMessageProps {
   message: string;
   created_at: string;
+  name: string;
 }
 
 const ChatHeader = ({ chatterName, userStatus }: ChatHeaderProps) => {
@@ -29,15 +31,15 @@ const ChatHeader = ({ chatterName, userStatus }: ChatHeaderProps) => {
     window.location.href = '/';
   };
   return (
-    <div className="p-4 flex justify-between border-b border-[#222]">
-      <div className="flex items-center">
+    <div className="px-4 py-3 flex justify-between items-center border-b border-[#1e1f22] bg-[#313338]">
+      <div className="flex items-center gap-2">
         {userStatus &&
           (userStatus.status ? <OnlineIndicator /> : <OfflineIndicator />)}
-        <p className="text-sm text-white ml-3">{chatterName}</p>
+        <p className="text-sm font-semibold text-[#dbdee1]">{chatterName}</p>
       </div>
       <button
         onClick={handleLogout}
-        className="text-sm flex items-center gap-1 text-[#555] hover:text-white cursor-pointer"
+        className="text-xs flex items-center gap-1 text-[#80848e] hover:text-[#dbdee1] cursor-pointer transition-colors"
       >
         logout
         <LogoutIcon />
@@ -51,18 +53,17 @@ const messageSenderCSS =
   'after:content-[""] after:absolute after:bottom-0 after:right-[-8px] ' +
   'after:border-8 after:border-transparent after:border-b-[#007AFF] after:border-l-[#007AFF] ';
 
-const ChatMessageSender = ({ message, created_at }: ChatMessageProps) => {
+const ChatMessageSender = ({ message, created_at, name }: ChatMessageProps) => {
   const [hovered, setHovered] = useState(false);
-
   return (
     <motion.div
-      className="flex items-end justify-end gap-1"
+      className="flex items-center justify-end gap-1"
       initial={{ opacity: 0, x: 100 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ type: 'spring', duration: 0.35 }}
     >
       <span
-        className={`text-xs text-gray-400 ${hovered ? 'visible' : 'invisible'}`}
+        className={`text-xs text-[#80848e] ${hovered ? 'visible' : 'invisible'}`}
       >
         {new Date(created_at).toLocaleTimeString([], {
           hour: '2-digit',
@@ -76,25 +77,35 @@ const ChatMessageSender = ({ message, created_at }: ChatMessageProps) => {
       >
         {message}
       </div>
+      <Avatar
+        name={name}
+        color="
+
+      #c0392b"
+      />
     </motion.div>
   );
 };
 
 const messageReceiverCSS =
-  'relative self-start bg-[#E9E9EB] text-black text-sm rounded-2xl rounded-bl-none px-3 py-2 max-w-[50%] break-words ' +
+  'relative self-start bg-[#3f4147] text-[#dbdee1] text-sm rounded-2xl rounded-bl-none px-3 py-2 max-w-[50%] break-words ' +
   'after:content-[""] after:absolute after:bottom-0 after:left-[-8px] ' +
-  'after:border-8 after:border-transparent after:border-b-[#E9E9EB] after:border-r-[#E9E9EB] ';
+  'after:border-8 after:border-transparent after:border-b-[#3f4147] after:border-r-[#3f4147] ';
 
-const ChatMessageReceiver = ({ message, created_at }: ChatMessageProps) => {
+const ChatMessageReceiver = ({
+  message,
+  created_at,
+  name,
+}: ChatMessageProps) => {
   const [hovered, setHovered] = useState(false);
-
   return (
     <motion.div
       initial={{ opacity: 0, x: -100 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ type: 'spring', duration: 0.35 }}
-      className="flex items-end justify-start gap-1"
+      className="flex items-center justify-start gap-1"
     >
+      <Avatar name={name} />
       <div
         className={messageReceiverCSS}
         onMouseEnter={() => setHovered(true)}
@@ -103,7 +114,7 @@ const ChatMessageReceiver = ({ message, created_at }: ChatMessageProps) => {
         {message}
       </div>
       <span
-        className={`text-xs text-gray-400 ${hovered ? 'visible' : 'invisible'}`}
+        className={`text-xs text-[#80848e] ${hovered ? 'visible' : 'invisible'}`}
       >
         {new Date(created_at).toLocaleTimeString([], {
           hour: '2-digit',
@@ -117,21 +128,30 @@ const ChatMessageReceiver = ({ message, created_at }: ChatMessageProps) => {
 interface ChatMessagesProps {
   myId: string;
   messages: Message[];
+  myName: string;
+  otherName: string;
 }
 
-const ChatMessages = ({ myId, messages }: ChatMessagesProps) => {
+const ChatMessages = ({
+  myId,
+  messages,
+  myName,
+  otherName,
+}: ChatMessagesProps) => {
   const messageBox = (msg: Message) => {
     return myId === msg.message_to ? (
       <ChatMessageReceiver
         key={msg.message_id}
         message={msg.content}
         created_at={msg.created_at}
+        name={otherName}
       />
     ) : (
       <ChatMessageSender
         key={msg.message_id}
         message={msg.content}
         created_at={msg.created_at}
+        name={myName}
       />
     );
   };
@@ -153,7 +173,6 @@ export default function ChatBox({
   setRecentMessageSent,
 }: ChatBoxProps) {
   const myUserId = localStorage.getItem('user_id') ?? '';
-
   const [chatMessages, setChatMessages] = useState<Message[]>([]);
   const chatMessagesRef = useRef<Message[]>([]);
   const currentUserProfileRef = useRef(currentUserProfile);
@@ -164,11 +183,9 @@ export default function ChatBox({
   useEffect(() => {
     currentUserProfileRef.current = currentUserProfile;
   }, [currentUserProfile]);
-
   useEffect(() => {
     chatMessagesRef.current = chatMessages;
   }, [chatMessages]);
-
   useEffect(() => {
     bottomRef.current?.scrollIntoView();
   }, [chatMessages]);
@@ -178,32 +195,26 @@ export default function ChatBox({
       case 'new_message': {
         const message: MessageResponse = msg.payload;
         if (!currentUserProfileRef.current) return;
-
         const isConversation =
           (message.message_from === currentUserProfileRef.current.user_id &&
             message.message_to === myUserId) ||
           (message.message_from === myUserId &&
             message.message_to === currentUserProfileRef.current.user_id);
-
         if (!isConversation) return;
-
         if (message.message_to === myUserId) {
           sendMessage({
             type: 'notify_read',
             payload: { message_id: message.message_id },
           });
         }
-
         cachedMessages.delete(currentUserProfileRef.current.user_id);
         setRecentMessageSent(message);
         setChatMessages((prev) => [message, ...prev]);
         break;
       }
-
       case 'message_read': {
         const read = msg.payload;
         const first = chatMessagesRef.current[0];
-
         if (
           first &&
           first.message_id === read.message_id &&
@@ -218,44 +229,32 @@ export default function ChatBox({
 
   const handleSend = (content: string) => {
     if (!currentUserProfile) return;
-
     sendMessage({
       type: 'send_message',
-      payload: {
-        content,
-        message_to: currentUserProfile.user_id,
-      },
+      payload: { content, message_to: currentUserProfile.user_id },
     });
   };
 
   useEffect(() => {
-    if (!currentUserProfile) return;
-    if (chatMessages.length === 0) return;
-
+    if (!currentUserProfile || chatMessages.length === 0) return;
     const fetchReads = async () => {
       const msg = chatMessages[0];
-
       if (msg.message_from !== myUserId) return;
-
       try {
         const data = await fetchMessageReadEntries(msg.message_id);
-
         const read = data.read_by.some(
           (r: MessageReadResponse) => r.reader_id === msg.message_to
         );
-
         setMessageRead(read);
       } catch (err) {
         console.log(err);
       }
     };
-
     fetchReads();
   }, [chatMessages, currentUserProfile]);
 
   useEffect(() => {
     if (!currentUserProfile) return;
-
     fetchUserStatus(currentUserProfile.user_id)
       .then(setUserStatus)
       .catch(console.error);
@@ -263,47 +262,50 @@ export default function ChatBox({
 
   useEffect(() => {
     if (!currentUserProfile) return;
-
     const load = async () => {
       try {
         if (cachedMessages.has(currentUserProfile.user_id)) {
           setChatMessages(cachedMessages.get(currentUserProfile.user_id)!);
           return;
         }
-
         const data = await fetchRecentMessages(currentUserProfile.user_id);
-
         cachedMessages.set(currentUserProfile.user_id, data);
         setChatMessages(data);
       } catch (err) {
         console.error(err);
       }
     };
-
     load();
   }, [currentUserProfile]);
 
   return (
-    <div className="flex-1 flex flex-col min-w-0">
+    <div className="flex-1 flex flex-col min-w-0 bg-[#25272b]">
       <ChatHeader
         chatterName={currentUserProfile?.username ?? 'Select a chat'}
         userStatus={userStatus}
       />
-
       <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3 scrollbar-none">
-        {currentUserProfile && (
-          <ChatMessages myId={myUserId} messages={chatMessages} />
+        {!currentUserProfile ? (
+          <div className="h-full flex items-center justify-center">
+            <p className="text-xs text-[#80848e] uppercase tracking-widest">
+              select a conversation
+            </p>
+          </div>
+        ) : (
+          <ChatMessages
+            myId={myUserId}
+            messages={chatMessages}
+            myName={localStorage.getItem('username') ?? ''}
+            otherName={currentUserProfile.username}
+          />
         )}
-
         {chatMessages.length > 0 &&
           chatMessages[0].message_from === myUserId &&
           messageRead && (
-            <span className="text-xs text-gray-500 self-end pr-2">Seen</span>
+            <span className="text-xs text-[#80848e] self-end pr-2">Seen</span>
           )}
-
         <div ref={bottomRef} />
       </div>
-
       {currentUserProfile && <ChatSendBox onSend={handleSend} />}
     </div>
   );

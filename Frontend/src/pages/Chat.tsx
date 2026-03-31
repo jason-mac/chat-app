@@ -1,4 +1,4 @@
-import ChatSidebar from '../components/chat/ChatSidebar';
+import ChatSidebar from '../components/chat/sidebar/ChatSidebar';
 import ChatBox from '../components/chat/ChatBox';
 import type { UserProfile } from '../types/user';
 import { useState } from 'react';
@@ -10,8 +10,9 @@ function Chat() {
   const [recentMessageSent, setRecentMessageSent] = useState<Message | null>(
     null
   );
+
   return (
-    <div className="h-screen overflow-hidden flex bg-[#0a0a0a] font-mono text-white">
+    <div className="h-screen overflow-hidden flex bg-[#313338] font-mono text-[#dbdee1]">
       <ChatSidebar
         currentUserProfile={currentUserProfile}
         setCurrentUserProfile={setCurrentUserProfile}

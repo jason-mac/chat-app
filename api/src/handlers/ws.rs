@@ -1,11 +1,8 @@
 use crate::application::Application;
 use crate::auth::jwt::verify_token;
-use crate::dtos::message::CreateMessage;
-use crate::dtos::message::MessageResponse;
-use crate::dtos::message_read::NotifyRead;
-use crate::dtos::message_read::{MessageReadResponse, MessageReadResponses};
-use crate::dtos::ws::WsRequest;
-use crate::dtos::ws::WsResponse;
+use crate::dtos::message::{CreateDirectMessage, CreateGroupMessage, MessageResponse};
+use crate::dtos::message_read::{MessageReadResponse, NotifyRead};
+use crate::dtos::ws::{WsRequest, WsResponse};
 use crate::mappers::message::to_message_response;
 use axum::extract::Query;
 use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
@@ -51,14 +48,15 @@ async fn handle_socket(socket: WebSocket, user_id: Uuid, app: Application) {
         if let Message::Text(ref text) = msg {
             let request: WsRequest = serde_json::from_str(&text).unwrap();
             match request {
-                WsRequest::SendMessage(body) => {
-                    handle_send_message(&app, user_id, body).await;
+                WsRequest::SendDirectMessage(body) => {
+                    handle_send_direct_message(&app, user_id, body).await;
                 }
-
+                WsRequest::SendGroupMessage(body) => {
+                    handle_send_group_message(&app, user_id, body).await;
+                }
                 WsRequest::NotifyRead(body) => {
                     handle_notify_read(&app, user_id, body).await;
                 }
-
                 WsRequest::Ping => {}
             }
         }
@@ -67,7 +65,7 @@ async fn handle_socket(socket: WebSocket, user_id: Uuid, app: Application) {
 }
 
 async fn handle_notify_read(app: &Application, user_id: Uuid, body: NotifyRead) {
-    sqlx::query!(
+    match sqlx::query!(
         r#"
         INSERT INTO message_reads (message_id, user_id)
         VALUES ($1, $2)
@@ -78,19 +76,25 @@ async fn handle_notify_read(app: &Application, user_id: Uuid, body: NotifyRead) 
     )
     .execute(&app.db)
     .await
-    .unwrap();
+    {
+        Ok(_) => {}
+        Err(_) => return,
+    }
 
-    let sender_id = sqlx::query_scalar!(
+    let sender_id = match sqlx::query_scalar!(
         r#"
-        SELECT message_from
+        SELECT sender_id
         FROM messages
         WHERE message_id = $1
         "#,
-        body.message_id
+        body.message_id,
     )
     .fetch_one(&app.db)
     .await
-    .unwrap();
+    {
+        Ok(id) => id,
+        Err(_) => return,
+    };
 
     let response = WsResponse::MessageRead(MessageReadResponse {
         message_id: body.message_id,
@@ -99,41 +103,123 @@ async fn handle_notify_read(app: &Application, user_id: Uuid, body: NotifyRead) 
     });
 
     let text = serde_json::to_string(&response).unwrap();
-
     let users = app.connected_users.lock().await;
 
-    if let Some(sender_id) = sender_id {
-        if let Some(tx) = users.get(&sender_id) {
-            let _ = tx.send(Message::Text(text.into()));
-        }
+    if let Some(tx) = users.get(&sender_id) {
+        let _ = tx.send(Message::Text(text.into()));
     }
 }
 
-async fn handle_send_message(app: &Application, user_id: Uuid, body: CreateMessage) {
+async fn get_or_create_direct_conversation(
+    app: &Application,
+    user_id: Uuid,
+    receiver_id: Uuid,
+) -> Option<Uuid> {
     let db_query = r#"
-        INSERT INTO messages (content, message_from, message_to)
+        INSERT INTO conversations (is_group)
+        VALUES (false)
+        RETURNING conversation_id
+    "#;
+
+    let conversation_id = match sqlx::query_scalar::<_, Uuid>(db_query)
+        .fetch_one(&app.db)
+        .await
+    {
+        Ok(id) => id,
+        Err(_) => return None,
+    };
+
+    let db_query = r#"
+        INSERT INTO conversation_members (conversation_id, user_id)
+        VALUES ($1, $2), ($1, $3)
+    "#;
+
+    match sqlx::query(db_query)
+        .bind(conversation_id)
+        .bind(user_id)
+        .bind(receiver_id)
+        .execute(&app.db)
+        .await
+    {
+        Ok(_) => Some(conversation_id),
+        Err(_) => None,
+    }
+}
+
+async fn handle_send_direct_message(app: &Application, user_id: Uuid, body: CreateDirectMessage) {
+    let conversation_id = match body.conversation_id {
+        Some(id) => id,
+        None => match get_or_create_direct_conversation(&app, user_id, body.receiver_id).await {
+            Some(id) => id,
+            None => return,
+        },
+    };
+
+    let db_query = r#"
+        INSERT INTO messages (content, sender_id, conversation_id)
         VALUES ($1, $2, $3)
         RETURNING *
     "#;
 
-    let saved: crate::models::message::Message = sqlx::query_as(db_query)
+    let saved: crate::models::message::Message = match sqlx::query_as(db_query)
         .bind(&body.content)
         .bind(user_id)
-        .bind(body.message_to)
+        .bind(conversation_id)
         .fetch_one(&app.db)
         .await
-        .unwrap();
+    {
+        Ok(m) => m,
+        Err(_) => return,
+    };
 
     let response = WsResponse::NewMessage(to_message_response(saved));
+
     let text = serde_json::to_string(&response).unwrap();
 
     let users = app.connected_users.lock().await;
 
-    if let Some(recipient_tx) = users.get(&body.message_to) {
-        let _ = recipient_tx.send(Message::Text(text.clone().into()));
+    if let Some(receiver_tx) = users.get(&body.receiver_id) {
+        let _ = receiver_tx.send(Message::Text(text.clone().into()));
     }
 
     if let Some(sender_tx) = users.get(&user_id) {
         let _ = sender_tx.send(Message::Text(text.into()));
+    }
+}
+
+async fn handle_send_group_message(app: &Application, user_id: Uuid, body: CreateGroupMessage) {
+    let db_query = r#"
+        INSERT INTO messages (content, sender_id, conversation_id)
+        VALUES ($1, $2, $3)
+        RETURNING *
+    "#;
+    let saved: crate::models::message::Message = match sqlx::query_as(db_query)
+        .bind(&body.content)
+        .bind(user_id)
+        .bind(body.conversation_id)
+        .fetch_one(&app.db)
+        .await
+    {
+        Ok(m) => m,
+        Err(_) => return,
+    };
+    let db_query = r#"
+        SELECT user_id FROM conversation_members WHERE conversation_id = $1
+    "#;
+    let member_ids: Vec<Uuid> = match sqlx::query_scalar(db_query)
+        .bind(body.conversation_id)
+        .fetch_all(&app.db)
+        .await
+    {
+        Ok(ids) => ids,
+        Err(_) => return,
+    };
+    let response = WsResponse::NewMessage(to_message_response(saved));
+    let text = serde_json::to_string(&response).unwrap();
+    let users = app.connected_users.lock().await;
+    for member_id in member_ids {
+        if let Some(tx) = users.get(&member_id) {
+            let _ = tx.send(Message::Text(text.clone().into()));
+        }
     }
 }

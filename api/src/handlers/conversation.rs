@@ -42,3 +42,30 @@ pub async fn create_conversation(
     }
     Ok(Json(to_conversation_response(conversation)))
 }
+
+pub async fn get_conversations(
+    State(application): State<Application>,
+    Extension(current_user): Extension<CurrentUser>,
+) -> Result<Json<Vec<ConversationResponse>>, StatusCode> {
+    let db_query = r#"
+        SELECT c.conversation_id, c.name, c.is_group, c.created_at
+        FROM conversations c
+        JOIN conversation_members cm ON cm.conversation_id = c.conversation_id
+        WHERE cm.user_id = $1
+        ORDER BY (
+            SELECT MAX(created_at) FROM messages WHERE conversation_id = c.conversation_id
+        ) DESC NULLS LAST
+    "#;
+
+    let conversations = sqlx::query_as::<_, Conversation>(&db_query)
+        .bind(Uuid::parse_str(&current_user.user_id).unwrap())
+        .fetch_all(&application.db)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    Ok(Json(
+        conversations
+            .into_iter()
+            .map(|c| to_conversation_response(c))
+            .collect(),
+    ))
+}

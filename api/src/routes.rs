@@ -1,23 +1,22 @@
 use crate::Application;
 use crate::auth::middleware::auth_middleware;
 use crate::handlers::auth::{login, register};
-use crate::handlers::me::{delete_me, get_me, update_me};
-use crate::handlers::message::{get_conversation, get_message_by_id, get_messages};
-use crate::handlers::message_read::{get_message_read, get_message_reads};
-use crate::handlers::user::{
-    delete_user, get_user_by_id, get_user_online, get_user_profile, get_users, update_user,
-};
-
+use crate::handlers::conversation::{create_conversation, get_conversations};
 use crate::handlers::friendship::{
     accept_friend_request, decline_friend_request, delete_friend, get_friends,
     get_pending_friend_requests_incoming, get_pending_friend_requests_outgoing,
     send_friend_request,
 };
+use crate::handlers::me::{delete_me, get_me, update_me};
+use crate::handlers::message::{get_message_by_id, get_messages};
+use crate::handlers::message_read::{get_message_read, get_message_reads};
+use crate::handlers::user::{
+    delete_user, get_user_by_id, get_user_online, get_user_profile, get_users, update_user,
+};
 use crate::handlers::ws::ws_handler;
+use axum::Json;
 use axum::middleware;
 use axum::routing::{Router, delete, get, patch, post};
-
-use axum::Json;
 use axum::{http::StatusCode, response::IntoResponse};
 use serde_json::json;
 
@@ -51,14 +50,20 @@ pub fn create_router() -> Router<Application> {
         .route("/friends/{friend_id}", delete(delete_friend));
 
     let message_routes = Router::new()
-        .route("/messages", get(get_messages))
+        .route(
+            "/conversations/{conversation_id}/messages",
+            get(get_messages),
+        )
         .route("/messages/{message_id}", get(get_message_by_id))
-        .route("/messages/conversation/{user_id}", get(get_conversation))
         .route("/messages/{message_id}/read", get(get_message_reads))
         .route(
             "/messages/{message_id}/read/{user_id}",
             get(get_message_read),
         );
+
+    let conversation_routes = Router::new()
+        .route("/conversations", post(create_conversation))
+        .route("/conversations", get(get_conversations));
 
     let web_socket_routes = Router::new().route("/ws/{id}", get(ws_handler));
 
@@ -81,6 +86,7 @@ pub fn create_router() -> Router<Application> {
                     Router::new()
                         .merge(user_routes)
                         .merge(message_routes)
+                        .merge(conversation_routes)
                         .merge(me_routes)
                         .merge(friendship_routes)
                         .route_layer(middleware::from_fn(auth_middleware)),

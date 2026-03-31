@@ -6,10 +6,11 @@ use axum::{
 
 use crate::{
     application::Application,
-    dtos::message::{CreateMessage, MessageResponse},
+    dtos::message::{MessageQuery, MessageResponse},
     mappers::message::to_message_response,
     models::message::Message,
 };
+use axum::extract::Query;
 
 use crate::auth::types::CurrentUser;
 use axum::Extension;
@@ -19,92 +20,46 @@ use uuid::Uuid;
 pub async fn get_messages(
     State(app): State<Application>,
     Extension(current_user): Extension<CurrentUser>,
-) -> Json<Value> {
+    Path(conversation_id): Path<Uuid>,
+    Query(params): Query<MessageQuery>,
+) -> Result<Json<Vec<MessageResponse>>, StatusCode> {
     let db_query = r#"
-    SELECT * FROM messages 
-    WHERE message_to = $1 OR message_from = $1
+        SELECT * FROM messages 
+        WHERE conversation_id = $1
+        ORDER BY created_at ASC
+        LIMIT $2 OFFSET $3
     "#;
-
-    let messages: Vec<Message> = sqlx::query_as::<_, Message>(db_query)
-        .bind(Uuid::parse_str(&current_user.user_id).unwrap())
+    let messages = sqlx::query_as::<_, Message>(db_query)
+        .bind(conversation_id)
+        .bind(params.limit.unwrap_or(50))
+        .bind(params.offset.unwrap_or(0))
         .fetch_all(&app.db)
         .await
-        .unwrap();
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     let response: Vec<MessageResponse> = messages
         .into_iter()
         .map(|m| to_message_response(m))
         .collect();
-    Json(json!(response))
+    Ok(Json(response))
 }
 
 pub async fn get_message_by_id(
     State(app): State<Application>,
     Extension(current_user): Extension<CurrentUser>,
-    Path(message_id): Path<i32>,
-) -> Json<Value> {
+    Path(message_id): Path<Uuid>,
+) -> Result<Json<MessageResponse>, StatusCode> {
     let db_query = r#"
-    SELECT * FROM messages 
-    WHERE message_id = $1 
-    AND (message_to = $2 OR message_from = $2)
+        SELECT * FROM messages 
+        WHERE message_id = $1 
     "#;
-
     let message = sqlx::query_as::<_, Message>(db_query)
         .bind(message_id)
-        .bind(Uuid::parse_str(&current_user.user_id).unwrap())
         .fetch_optional(&app.db)
         .await
-        .unwrap();
-
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
     match message {
-        Some(m) => Json(json!(to_message_response(m))),
-        None => Json(json!({"error": "message not found"})),
+        Some(m) => Ok(Json(to_message_response(m))),
+        None => Err(StatusCode::NOT_FOUND),
     }
-}
-
-pub async fn get_conversation(
-    State(app): State<Application>,
-    Extension(current_user): Extension<CurrentUser>,
-    Path(other_user_id): Path<Uuid>,
-) -> Json<Value> {
-    let db_query = r#"
-    SELECT * FROM messages 
-    WHERE (message_to = $1 AND message_from = $2)
-    OR (message_to = $2 AND message_from = $1)
-    ORDER BY created_at ASC
-    "#;
-
-    let messages: Vec<Message> = sqlx::query_as::<_, Message>(db_query)
-        .bind(Uuid::parse_str(&current_user.user_id).unwrap())
-        .bind(other_user_id)
-        .fetch_all(&app.db)
-        .await
-        .unwrap();
-
-    let response: Vec<MessageResponse> = messages
-        .into_iter()
-        .map(|m| to_message_response(m))
-        .collect();
-    Json(json!(response))
-}
-
-pub async fn create_message(
-    State(app): State<Application>,
-    Json(body): Json<CreateMessage>,
-) -> Json<Value> {
-    let db_query = r#"
-    INSERT INTO messages (content, message_from, message_to)
-    VALUES ($1, $2, $3) 
-    RETURNING *
-    "#;
-
-    let message = sqlx::query_as::<_, Message>(db_query)
-        .bind(body.content)
-        .bind(body.message_to)
-        .fetch_one(&app.db)
-        .await
-        .unwrap();
-
-    let response: MessageResponse = to_message_response(message);
-    Json(json!(response))
 }

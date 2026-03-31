@@ -116,6 +116,26 @@ async fn get_or_create_direct_conversation(
     receiver_id: Uuid,
 ) -> Option<Uuid> {
     let db_query = r#"
+        SELECT cm1.conversation_id
+        FROM conversation_members cm1
+        JOIN conversation_members cm2 ON cm1.conversation_id = cm2.conversation_id
+        JOIN conversations c ON c.conversation_id = cm1.conversation_id
+        WHERE cm1.user_id = $1
+        AND cm2.user_id = $2
+        AND c.is_group = false
+        LIMIT 1
+    "#;
+
+    if let Ok(Some(existing_id)) = sqlx::query_scalar::<_, Uuid>(db_query)
+        .bind(user_id)
+        .bind(receiver_id)
+        .fetch_optional(&app.db)
+        .await
+    {
+        return Some(existing_id);
+    }
+
+    let db_query = r#"
         INSERT INTO conversations (is_group)
         VALUES (false)
         RETURNING conversation_id

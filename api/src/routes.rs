@@ -29,7 +29,7 @@ pub fn create_router() -> Router<Application> {
         .route("/users/{user_id}", patch(update_user));
 
     let friendship_routes = Router::new()
-        .route("/friend-requests", post(send_friend_request))
+        .route("/friend-requests/{receiver_id}", post(send_friend_request))
         .route(
             "/friend-requests/{request_id}/decline",
             patch(decline_friend_request),

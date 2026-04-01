@@ -4,79 +4,66 @@ import { HeaderBox } from './HeaderBox.tsx';
 import { SearchBox } from './SearchBox.tsx';
 import { ChatItemJSX } from './ChatItemJSX.tsx';
 import { fetchRecentChatItems } from '../../../services/recentChatItems.ts';
-import { fetchAllUsers } from '../../../services/getUsers.ts';
 import { Avatar } from '../../ui/Avatar.tsx';
-import type { UserProfile } from '../../../types/user.ts';
 import type { Message } from '../../../types/message.ts';
 import type { ChatItem } from '../../../types/chat-item.ts';
+import type { ConversationResponse } from '../../../types/conversation.ts';
 
 interface ChatSidebarProps {
-  currentUserProfile: UserProfile | null;
-  setCurrentUserProfile: React.Dispatch<
-    React.SetStateAction<UserProfile | null>
+  currentConversation: ConversationResponse | null;
+  setCurrentConversation: React.Dispatch<
+    React.SetStateAction<ConversationResponse | null>
   >;
+  setReceiverId: React.Dispatch<React.SetStateAction<string | null>>;
   recentMessageSent: Message | null;
 }
 
 type SideBarMode = 'conversation' | 'user';
 
 export default function ChatSidebar({
-  currentUserProfile,
-  setCurrentUserProfile,
+  currentConversation,
+  setCurrentConversation,
+  setReceiverId,
   recentMessageSent,
 }: ChatSidebarProps) {
-  const myId = localStorage.getItem('user_id');
-  const [recentMessages, setRecentMessages] = useState<ChatItem[]>([]);
-  const [users, setUsers] = useState<UserProfile[]>([]);
+  const [recentChats, setRecentChats] = useState<ChatItem[]>([]);
   const [query, setQuery] = useState<string>('');
   const [sideBarMode, setSideBarMode] = useState<SideBarMode>('conversation');
 
   const displayData = useMemo(() => {
-    const data =
-      sideBarMode === 'conversation'
-        ? recentMessages
-        : users.map(
-            (user) => ({ userProfile: user, message: null }) as ChatItem
-          );
-    if (query === '') return data;
-    return data.filter((chatItem) =>
-      chatItem.userProfile.username.toLowerCase().includes(query.toLowerCase())
+    if (query === '') return recentChats;
+    return recentChats.filter((chatItem) =>
+      (chatItem.conversation.name ?? 'Direct Message')
+        .toLowerCase()
+        .includes(query.toLowerCase())
     );
-  }, [sideBarMode, query, recentMessages, users]);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      const data = await fetchAllUsers();
-      setUsers(data);
-    };
-    fetchData();
-  }, []);
+  }, [sideBarMode, query, recentChats]);
 
   useEffect(() => {
     const fetchData = async () => {
       const data = await fetchRecentChatItems();
-      setRecentMessages(data);
+      setRecentChats(data);
     };
     fetchData();
   }, []);
 
   useEffect(() => {
-    if (!recentMessageSent || !myId) return;
+    if (!recentMessageSent) return;
     const conversationId = recentMessageSent.conversation_id;
     let index = 0;
-    while (index < recentMessages.length) {
-      if (conversationId === recentMessages[index].message?.conversation_id)
+    while (index < recentChats.length) {
+      if (conversationId === recentChats[index].conversation.conversation_id)
         break;
       index++;
     }
-    if (index >= recentMessages.length) return;
+    if (index >= recentChats.length) return;
     const newChatItem: ChatItem = {
-      ...recentMessages[index],
+      ...recentChats[index],
       message: recentMessageSent,
     };
-    let newRecentMessages = recentMessages.filter((_, i) => i !== index);
-    newRecentMessages = [newChatItem, ...newRecentMessages];
-    setRecentMessages(newRecentMessages);
+    let newRecentChats = recentChats.filter((_, i) => i !== index);
+    newRecentChats = [newChatItem, ...newRecentChats];
+    setRecentChats(newRecentChats);
   }, [recentMessageSent]);
 
   return (
@@ -84,17 +71,21 @@ export default function ChatSidebar({
       <HeaderBox
         sideBarMode={sideBarMode}
         setSideBarMode={setSideBarMode}
-        setRecentMessages={setRecentMessages}
+        setRecentChats={setRecentChats}
       />
       <SearchBox setQuery={setQuery} />
       <div className="flex-1 overflow-y-auto overflow-x-hidden">
         {displayData.map((item) => (
           <ChatItemJSX
-            key={item.userProfile.user_id}
-            userProfile={item.userProfile}
+            key={item.conversation.conversation_id}
+            conversation={item.conversation}
             message={item.message}
-            setCurrentUserProfile={setCurrentUserProfile}
-            isActive={currentUserProfile?.user_id === item.userProfile.user_id}
+            setCurrentConversation={setCurrentConversation}
+            setReceiverId={setReceiverId}
+            isActive={
+              currentConversation?.conversation_id ===
+              item.conversation.conversation_id
+            }
           />
         ))}
       </div>

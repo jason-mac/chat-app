@@ -5,11 +5,11 @@ import type { ChatItem } from '../../../types/chat-item';
 type SideBarMode = 'conversation' | 'user';
 
 export function HeaderBox({
-  setRecentMessages,
+  setRecentChats,
   sideBarMode,
   setSideBarMode,
 }: {
-  setRecentMessages: React.Dispatch<React.SetStateAction<ChatItem[]>>;
+  setRecentChats: React.Dispatch<React.SetStateAction<ChatItem[]>>;
   sideBarMode: SideBarMode;
   setSideBarMode: React.Dispatch<React.SetStateAction<SideBarMode>>;
 }) {
@@ -27,7 +27,7 @@ export function HeaderBox({
           {isUser ? <MessageIcon /> : <PersonIcon />}
         </button>
         <button
-          onClick={() => fetchRecentChatItems().then(setRecentMessages)}
+          onClick={() => fetchRecentChatItems().then(setRecentChats)}
           className="text-[#80848e] hover:text-[#dbdee1] text-lg cursor-pointer transition-colors"
         >
           ↻

@@ -1,9 +1,9 @@
 import { API_URL } from '../config';
-import type { MessageReadsResponse } from '../types/messageRead';
+import type { MessageReadResponses } from '../types/message-read';
 
 export const fetchMessageReadEntries = async (
   message_id: string
-): Promise<MessageReadsResponse> => {
+): Promise<MessageReadResponses> => {
   const res = await fetch(`${API_URL}/messages/${message_id}/read`, {
     headers: {
       Authorization: `Bearer ${localStorage.getItem('token')}`,

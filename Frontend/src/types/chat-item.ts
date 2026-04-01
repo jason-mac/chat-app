@@ -1,6 +1,7 @@
-import type { UserProfile } from './user.ts';
-import type { Message } from './message.ts';
+import type { ConversationResponse } from './conversation';
+import type { Message } from './message';
+
 export interface ChatItem {
-  userProfile: UserProfile;
+  conversation: ConversationResponse;
   message: Message | null;
 }

@@ -1,19 +1,19 @@
 import { useState, useEffect, useRef } from 'react';
-import ChatSendBox from './ChatSendBox';
+import ChatSendBox from '../ChatSendBox';
 import ChatHeader from './ChatHeader';
 import ChatMessages from './ChatMessages';
 import { LRUCache } from 'lru-cache';
 import { fetchRecentMessages } from '../../../services/recentMessages';
 import { useWebSocket } from '../../../services/useWebSocket';
-import { fetchUserStatus } from '../../../services/getUserStatus';
 import { fetchMessageReadEntries } from '../../../services/getMessageReadByUsers';
 
-import type { UserOnline, UserProfile } from '../../../types/user';
 import type { Message } from '../../../types/message';
 import type { MessageReadResponse } from '../../../types/message-read';
+import type { ConversationResponse } from '../../../types/conversation';
 
 interface ChatBoxProps {
-  currentUserProfile: UserProfile | null;
+  currentConversation: ConversationResponse | null;
+  receiverId: string | null;
   setRecentMessageSent: React.Dispatch<React.SetStateAction<Message | null>>;
 }
 
@@ -23,20 +23,20 @@ const cachedMessages = new LRUCache<string, Message[]>({
 });
 
 export default function ChatBox({
-  currentUserProfile,
+  currentConversation,
+  receiverId,
   setRecentMessageSent,
 }: ChatBoxProps) {
   const myUserId = localStorage.getItem('user_id') ?? '';
   const [chatMessages, setChatMessages] = useState<Message[]>([]);
   const chatMessagesRef = useRef<Message[]>([]);
-  const currentUserProfileRef = useRef(currentUserProfile);
-  const [userStatus, setUserStatus] = useState<UserOnline | null>(null);
+  const currentConversationRef = useRef(currentConversation);
   const [messageRead, setMessageRead] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    currentUserProfileRef.current = currentUserProfile;
-  }, [currentUserProfile]);
+    currentConversationRef.current = currentConversation;
+  }, [currentConversation]);
   useEffect(() => {
     chatMessagesRef.current = chatMessages;
   }, [chatMessages]);
@@ -48,17 +48,19 @@ export default function ChatBox({
     switch (msg.type) {
       case 'new_message': {
         const message = msg.payload;
-        if (!currentUserProfileRef.current) return;
-        const isConversation =
-          message.conversation_id === currentUserProfileRef.current.user_id;
-        if (!isConversation) return;
+        if (!currentConversationRef.current) return;
+        if (
+          message.conversation_id !==
+          currentConversationRef.current.conversation_id
+        )
+          return;
         if (message.sender_id !== myUserId) {
           sendMessage({
             type: 'notify_read',
             payload: { message_id: message.message_id },
           });
         }
-        cachedMessages.delete(currentUserProfileRef.current.user_id);
+        cachedMessages.delete(currentConversationRef.current.conversation_id);
         setRecentMessageSent(message);
         setChatMessages((prev) => [message, ...prev]);
         break;
@@ -79,15 +81,32 @@ export default function ChatBox({
   });
 
   const handleSend = (content: string) => {
-    if (!currentUserProfile) return;
-    sendMessage({
-      type: 'send_direct_message',
-      payload: { content, receiver_id: currentUserProfile.user_id },
-    });
+    if (!currentConversation) return;
+    console.log(receiverId);
+    if (currentConversation.is_group) {
+      sendMessage({
+        type: 'send_group_message',
+        payload: {
+          content,
+          conversation_id: currentConversation.conversation_id,
+        },
+      });
+    } else {
+      if (!receiverId) return;
+      console.log(receiverId);
+      sendMessage({
+        type: 'send_direct_message',
+        payload: {
+          content,
+          conversation_id: currentConversation.conversation_id,
+          receiver_id: receiverId,
+        },
+      });
+    }
   };
 
   useEffect(() => {
-    if (!currentUserProfile || chatMessages.length === 0) return;
+    if (!currentConversation || chatMessages.length === 0) return;
     const fetchReads = async () => {
       const msg = chatMessages[0];
       if (msg.sender_id !== myUserId) return;
@@ -102,41 +121,46 @@ export default function ChatBox({
       }
     };
     fetchReads();
-  }, [chatMessages, currentUserProfile]);
+  }, [chatMessages, currentConversation]);
 
   useEffect(() => {
-    if (!currentUserProfile) return;
-    fetchUserStatus(currentUserProfile.user_id)
-      .then(setUserStatus)
-      .catch(console.error);
-  }, [currentUserProfile]);
-
-  useEffect(() => {
-    if (!currentUserProfile) return;
+    if (!currentConversation) return;
     const load = async () => {
       try {
-        if (cachedMessages.has(currentUserProfile.user_id)) {
-          setChatMessages(cachedMessages.get(currentUserProfile.user_id)!);
+        if (cachedMessages.has(currentConversation.conversation_id)) {
+          setChatMessages(
+            cachedMessages.get(currentConversation.conversation_id)!
+          );
           return;
         }
-        const data = await fetchRecentMessages(currentUserProfile.user_id);
-        cachedMessages.set(currentUserProfile.user_id, data);
+        const data = await fetchRecentMessages(
+          currentConversation.conversation_id
+        );
+        cachedMessages.set(currentConversation.conversation_id, data);
         setChatMessages(data);
       } catch (err) {
         console.error(err);
       }
     };
     load();
-  }, [currentUserProfile]);
+  }, [currentConversation]);
 
   return (
-    <div className="flex-1 flex flex-col min-w-0 bg-[#25272b]">
+    <div
+      className="flex-1 flex flex-col min-w-0 bg-[#25272b]"
+      style={{
+        backgroundImage:
+          'url(https://images.unsplash.com/photo-1534796636912-3b95b3ab5986?w=1920&q=80)',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      }}
+    >
       <ChatHeader
-        chatterName={currentUserProfile?.username ?? 'Select a chat'}
-        userStatus={userStatus}
+        chatterName={currentConversation?.name ?? 'Select a chat'}
+        userStatus={null}
       />
       <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3 scrollbar-none">
-        {!currentUserProfile ? (
+        {!currentConversation ? (
           <div className="h-full flex items-center justify-center">
             <p className="text-xs text-[#80848e] uppercase tracking-widest">
               select a conversation
@@ -147,7 +171,7 @@ export default function ChatBox({
             myId={myUserId}
             messages={chatMessages}
             myName={localStorage.getItem('username') ?? ''}
-            otherName={currentUserProfile.username}
+            otherName={currentConversation.name ?? 'Direct Message'}
           />
         )}
         {chatMessages.length > 0 &&
@@ -157,7 +181,7 @@ export default function ChatBox({
           )}
         <div ref={bottomRef} />
       </div>
-      {currentUserProfile && <ChatSendBox onSend={handleSend} />}
+      {currentConversation && <ChatSendBox onSend={handleSend} />}
     </div>
   );
 }

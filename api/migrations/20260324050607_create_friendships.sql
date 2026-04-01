@@ -1,5 +1,3 @@
--- up
-
 CREATE TABLE friendships (
     requester_id UUID NOT NULL,
     receiver_id UUID NOT NULL,
@@ -16,8 +14,3 @@ ON friendships (
     LEAST(requester_id, receiver_id),
     GREATEST(requester_id, receiver_id)
 );
-
--- down
-
-DROP INDEX unique_friendship_pair;
-DROP TABLE friendships;

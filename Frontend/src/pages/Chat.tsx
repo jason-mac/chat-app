@@ -1,5 +1,6 @@
 import ChatSidebar from '../components/chat/sidebar/ChatSidebar';
 import ChatBox from '../components/chat/chatbox/ChatBox';
+import FriendSearch from '../components/friend-search/FriendSearch';
 import type { ConversationResponse } from '../types/conversation';
 import { useState } from 'react';
 import type { Message } from '../types/message';
@@ -12,6 +13,8 @@ function Chat() {
     null
   );
 
+  const [showSearchUser, setShowSearchUser] = useState<boolean>(false);
+
   return (
     <div className="h-screen overflow-hidden flex bg-[#313338] font-mono text-[#dbdee1]">
       <ChatSidebar
@@ -19,12 +22,17 @@ function Chat() {
         setCurrentConversation={setCurrentConversation}
         setReceiverId={setReceiverId}
         recentMessageSent={recentMessageSent}
+        setShowSearchUser={setShowSearchUser}
       />
-      <ChatBox
-        currentConversation={currentConversation}
-        receiverId={receiverId}
-        setRecentMessageSent={setRecentMessageSent}
-      />
+      {showSearchUser ? (
+        <FriendSearch />
+      ) : (
+        <ChatBox
+          currentConversation={currentConversation}
+          receiverId={receiverId}
+          setRecentMessageSent={setRecentMessageSent}
+        />
+      )}
     </div>
   );
 }

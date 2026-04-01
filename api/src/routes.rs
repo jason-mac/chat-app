@@ -1,7 +1,9 @@
 use crate::Application;
 use crate::auth::middleware::auth_middleware;
 use crate::handlers::auth::{login, register};
-use crate::handlers::conversation::{create_conversation, get_conversations};
+use crate::handlers::conversation::{
+    create_conversation, get_conversation_members, get_conversations,
+};
 use crate::handlers::friendship::{
     accept_friend_request, decline_friend_request, delete_friend, get_friends,
     get_pending_friend_requests_incoming, get_pending_friend_requests_outgoing,
@@ -63,7 +65,11 @@ pub fn create_router() -> Router<Application> {
 
     let conversation_routes = Router::new()
         .route("/conversations", post(create_conversation))
-        .route("/conversations", get(get_conversations));
+        .route("/conversations", get(get_conversations))
+        .route(
+            "/conversations/{conversation_id}/members",
+            get(get_conversation_members),
+        );
 
     let web_socket_routes = Router::new().route("/ws/{id}", get(ws_handler));
 

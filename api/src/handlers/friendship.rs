@@ -35,7 +35,10 @@ pub async fn send_friend_request(
         .await
         .map_err(|e| match e {
             sqlx::Error::RowNotFound => StatusCode::NOT_FOUND,
-            _ => StatusCode::INTERNAL_SERVER_ERROR,
+            _ => {
+                println!("DB error: {}", e);
+                StatusCode::INTERNAL_SERVER_ERROR
+            }
         })?;
 
     Ok(Json(to_friendship_response(friendship)))

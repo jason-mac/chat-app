@@ -2,7 +2,7 @@ import { MessageIcon, PersonIcon } from '../../ui/Icons';
 import { fetchRecentChatItems } from '../../../services/recentChatItems';
 import type { ChatItem } from '../../../types/chat-item';
 
-type SideBarMode = 'conversation' | 'user';
+type SideBarMode = 'conversations' | 'friends';
 
 export function HeaderBox({
   setRecentChats,
@@ -13,7 +13,8 @@ export function HeaderBox({
   sideBarMode: SideBarMode;
   setSideBarMode: React.Dispatch<React.SetStateAction<SideBarMode>>;
 }) {
-  const isUser = sideBarMode === 'user';
+  const isFriends = sideBarMode === 'friends';
+
   return (
     <div className="px-4 py-3 border-b border-[#111214] flex items-center justify-between">
       <p className="text-xs text-[#80848e] uppercase tracking-widest font-semibold">
@@ -21,10 +22,12 @@ export function HeaderBox({
       </p>
       <div className="flex items-center gap-2">
         <button
-          onClick={() => setSideBarMode(isUser ? 'conversation' : 'user')}
+          onClick={() =>
+            setSideBarMode(isFriends ? 'conversations' : 'friends')
+          }
           className="text-[#80848e] hover:text-[#dbdee1] cursor-pointer transition-colors"
         >
-          {isUser ? <MessageIcon /> : <PersonIcon />}
+          {isFriends ? <MessageIcon /> : <PersonIcon />}
         </button>
         <button
           onClick={() => fetchRecentChatItems().then(setRecentChats)}

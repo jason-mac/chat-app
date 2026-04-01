@@ -1,6 +1,8 @@
 use crate::application::Application;
 use crate::auth::types::CurrentUser;
-use crate::dtos::conversation::{ConversationResponse, CreateConversation};
+use crate::dtos::conversation::{
+    ConversationMembersResponse, ConversationResponse, CreateConversation,
+};
 use crate::mappers::conversation::{to_conversation_members_response, to_conversation_response};
 use crate::models::conversation::{Conversation, ConversationMember};
 use axum::Extension;
@@ -68,4 +70,25 @@ pub async fn get_conversations(
             .map(|c| to_conversation_response(c))
             .collect(),
     ))
+}
+
+pub async fn get_conversation_members(
+    State(application): State<Application>,
+    Extension(current_user): Extension<CurrentUser>,
+    Path(conversation_id): Path<Uuid>,
+) -> Result<Json<ConversationMembersResponse>, StatusCode> {
+    let db_query = r#"
+        SELECT conversation_id, user_id, joined_at
+        FROM conversation_members
+        WHERE conversation_id = $1
+    "#;
+    let members = sqlx::query_as::<_, ConversationMember>(&db_query)
+        .bind(conversation_id)
+        .fetch_all(&application.db)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    Ok(Json(to_conversation_members_response(
+        conversation_id,
+        members,
+    )))
 }
